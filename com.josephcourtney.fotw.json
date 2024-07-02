@@ -1,9 +1,0 @@
-{
-  "name": "com.josephcourtney.fotw",
-  "description": "FotW Native Messaging Host",
-  "path": "/Users/josephcourtney/Dropbox/code/Python/scrapers/fotw/fotw.py",
-  "type": "stdio",
-  "allowed_extensions": [
-    "fotw@josephcourtney.com"
-  ]
-}
