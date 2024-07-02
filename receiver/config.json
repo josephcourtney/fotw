@@ -1,0 +1,20 @@
+{
+  "DATABASE_URL": "sqlite:///browser_data.db",
+  "WEBSOCKET_HOST": "localhost",
+  "WEBSOCKET_PORT": 8080,
+  "EVENT_TYPES": {
+    "NETWORK_REQUEST": "network-request",
+    "NETWORK_RESPONSE": "network-response",
+    "USER_INTERACTION": "user-interaction",
+    "MOUSE_EVENTS": [
+      "click", "dblclick", "mousedown", "mouseup", "mousemove", "mouseenter",
+      "mouseleave", "mouseover", "mouseout", "drag", "dragend", "dragenter",
+      "dragexit", "dragleave", "dragover", "dragstart", "drop", "wheel"
+    ],
+    "KEY_EVENTS": ["keydown", "keypress", "keyup"],
+    "GENERIC_EVENTS": [
+      "ajax-request", "fetch-request", "geolocation", "geolocation-error",
+      "battery-status", "network-status", "visibilitychange"
+    ]
+  }
+}
