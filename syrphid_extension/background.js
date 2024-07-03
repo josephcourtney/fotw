@@ -194,7 +194,7 @@ function handleWebSocketCloseOrError(event) {
   const status = event.type === "close" ? "disconnected" : "error";
   log(
     `WebSocket ${status}. Reconnecting...`,
-    status === "error" ? "error" : "warn",
+    status === "error" ? "error" : "warn"
   );
   browser.runtime.sendMessage({ type: "ws-status", status });
   scheduleReconnect();
@@ -218,7 +218,7 @@ function calculateReconnectInterval() {
   return Math.min(
     config.RECONNECT_INTERVAL_MS *
       Math.pow(config.EXPONENTIAL_BACKOFF_FACTOR, config.RECONNECT_ATTEMPTS),
-    config.MAX_RECONNECT_INTERVAL_MS,
+    config.MAX_RECONNECT_INTERVAL_MS
   );
 }
 
@@ -290,7 +290,7 @@ function handleTabUpdated(tabId, changeInfo, tab) {
         tabId,
         url: changeInfo.url,
         tabTitle: tab.title,
-      }),
+      })
     );
   }
 }
@@ -302,7 +302,7 @@ function handleTabActivated(activeInfo) {
         tabId: activeInfo.tabId,
         url: tab.url,
         tabTitle: tab.title,
-      }),
+      })
     );
   });
 }
@@ -316,58 +316,68 @@ function handleNetworkResponse(details) {
 }
 
 function updateEventListeners() {
-  browser.tabs.onUpdated.removeListener(handleTabUpdated);
-  browser.tabs.onActivated.removeListener(handleTabActivated);
+  const eventListeners = [
+    {
+      event: "tabUpdated",
+      handler: handleTabUpdated,
+      target: browser.tabs.onUpdated,
+    },
+    {
+      event: "tabActivated",
+      handler: handleTabActivated,
+      target: browser.tabs.onActivated,
+    },
+    {
+      event: "networkRequest",
+      handler: handleNetworkRequest,
+      target: browser.webRequest.onBeforeRequest,
+    },
+    {
+      event: "networkResponse",
+      handler: handleNetworkResponse,
+      target: browser.webRequest.onCompleted,
+    },
+  ];
 
-  if (config.TRACKED_EVENTS.includes("tabUpdated")) {
-    browser.tabs.onUpdated.addListener(handleTabUpdated);
-  }
-  if (config.TRACKED_EVENTS.includes("tabActivated")) {
-    browser.tabs.onActivated.addListener(handleTabActivated);
-  }
-
-  browser.webRequest.onBeforeRequest.removeListener(handleNetworkRequest);
-  browser.webRequest.onCompleted.removeListener(handleNetworkResponse);
-
-  if (config.TRACKED_EVENTS.includes("networkRequest")) {
-    browser.webRequest.onBeforeRequest.addListener(handleNetworkRequest, {
-      urls: ["<all_urls>"],
-    });
-  }
-  if (config.TRACKED_EVENTS.includes("networkResponse")) {
-    browser.webRequest.onCompleted.addListener(handleNetworkResponse, {
-      urls: ["<all_urls>"],
-    });
-  }
+  eventListeners.forEach(({ event, handler, target }) => {
+    target.removeListener(handler);
+    if (config.TRACKED_EVENTS.includes(event)) {
+      target.addListener(handler, { urls: ["<all_urls>"] });
+    }
+  });
 }
 
 connectWebSocket();
 
-// Battery Events
-if (navigator.getBattery) {
-  navigator.getBattery().then((battery) => {
-    const updateBatteryStatus = () => {
-      const eventData = {
-        type: "battery-status",
-        charging: battery.charging,
-        chargingTime: battery.chargingTime,
-        dischargingTime: battery.dischargingTime,
-        level: battery.level,
-        timestamp: new Date().toISOString(),
-      };
-      sendToWebSocketServer(eventData);
+function addBatteryEventListeners(battery) {
+  const updateBatteryStatus = () => {
+    const eventData = {
+      type: "battery-status",
+      charging: battery.charging,
+      chargingTime: battery.chargingTime,
+      dischargingTime: battery.dischargingTime,
+      level: battery.level,
+      timestamp: new Date().toISOString(),
     };
+    sendToWebSocketServer(eventData);
+  };
 
-    battery.addEventListener("chargingchange", updateBatteryStatus);
-    battery.addEventListener("levelchange", updateBatteryStatus);
-    battery.addEventListener("chargingtimechange", updateBatteryStatus);
-    battery.addEventListener("dischargingtimechange", updateBatteryStatus);
-
-    updateBatteryStatus();
+  [
+    "chargingchange",
+    "levelchange",
+    "chargingtimechange",
+    "dischargingtimechange",
+  ].forEach((event) => {
+    battery.addEventListener(event, updateBatteryStatus);
   });
+
+  updateBatteryStatus();
 }
 
-// Geolocation Events
+if (navigator.getBattery) {
+  navigator.getBattery().then(addBatteryEventListeners);
+}
+
 const geolocationEventProps = (position) => ({
   coords: {
     latitude: position.coords.latitude,
@@ -403,11 +413,10 @@ if (navigator.geolocation) {
         timestamp: new Date().toISOString(),
       };
       sendToWebSocketServer(eventData);
-    },
+    }
   );
 }
 
-// Network Status Events
 const networkStatusEventProps = () => ({
   downlink: navigator.connection.downlink,
   effectiveType: navigator.connection.effectiveType,
@@ -430,28 +439,28 @@ if (navigator.connection) {
   updateNetworkStatus();
 }
 
-// Speech Recognition Events
+const speechEvents = [
+  "start",
+  "end",
+  "result",
+  "error",
+  "nomatch",
+  "soundstart",
+  "soundend",
+  "speechstart",
+  "speechend",
+  "audiostart",
+  "audioend",
+  "audioprocess",
+  "soundprocess",
+  "mark",
+  "boundary",
+];
+
 if (window.SpeechRecognition || window.webkitSpeechRecognition) {
   const recognition = new (window.SpeechRecognition ||
     window.webkitSpeechRecognition)();
-
-  [
-    "start",
-    "end",
-    "result",
-    "error",
-    "nomatch",
-    "soundstart",
-    "soundend",
-    "speechstart",
-    "speechend",
-    "audiostart",
-    "audioend",
-    "audioprocess",
-    "soundprocess",
-    "mark",
-    "boundary",
-  ].forEach((event) =>
+  speechEvents.forEach((event) => {
     recognition.addEventListener(event, (e) => {
       const eventData = createMessage(`speech-${event}`, {
         results: e.results,
@@ -460,13 +469,14 @@ if (window.SpeechRecognition || window.webkitSpeechRecognition) {
         timestamp: new Date().toISOString(),
       });
       sendToWebSocketServer(eventData);
-    }),
-  );
+    });
+  });
 }
 
-// Service Worker Events
+const serviceWorkerEvents = ["controllerchange", "message", "statechange"];
+
 if (navigator.serviceWorker) {
-  ["controllerchange", "message", "statechange"].forEach((event) => {
+  serviceWorkerEvents.forEach((event) => {
     navigator.serviceWorker.addEventListener(event, (e) => {
       const eventData = createMessage(`service-worker-${event}`, {
         timestamp: new Date().toISOString(),
@@ -476,11 +486,11 @@ if (navigator.serviceWorker) {
   });
 }
 
-// IndexedDB Events
+const indexedDBEvents = ["success", "error", "upgradeneeded", "blocked"];
+
 if (window.indexedDB) {
   const request = indexedDB.open("test");
-
-  ["success", "error", "upgradeneeded", "blocked"].forEach((event) => {
+  indexedDBEvents.forEach((event) => {
     request.addEventListener(event, (e) => {
       const eventData = createMessage(`indexeddb-${event}`, {
         timestamp: new Date().toISOString(),
@@ -491,18 +501,17 @@ if (window.indexedDB) {
 
   request.onsuccess = (event) => {
     const db = event.target.result;
-    ["abort", "error"].forEach((event) =>
+    ["abort", "error"].forEach((event) => {
       db.addEventListener(event, (e) => {
         const eventData = createMessage(`indexeddb-${event}`, {
           timestamp: new Date().toISOString(),
         });
         sendToWebSocketServer(eventData);
-      }),
-    );
+      });
+    });
   };
 }
 
-// Browser Storage Events
 window.addEventListener("storage", (e) => {
   const eventData = createMessage("storage", {
     key: e.key,

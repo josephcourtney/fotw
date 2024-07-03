@@ -1,0 +1,605 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "sessionId": {
+      "type": "string",
+      "description": "Unique identifier for the session."
+    },
+    "userAgent": {
+      "type": "string",
+      "description": "User agent string of the browser."
+    },
+    "operatingSystem": {
+      "type": "string",
+      "description": "Operating system of the user's device."
+    },
+    "screenResolution": {
+      "type": "string",
+      "description": "Screen resolution of the user's device."
+    },
+    "extensionVersion": {
+      "type": "string",
+      "description": "Version of the browser extension."
+    },
+    "type": {
+      "type": "string",
+      "description": "Type of the event."
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp of when the event occurred."
+    },
+    "event": {
+      "type": "string",
+      "description": "Type of the user interaction event.",
+      "enum": [
+        "DeviceMotionEvent",
+        "DeviceOrientationEvent",
+        "abort",
+        "addtrack",
+        "animationcancel",
+        "animationend",
+        "animationiteration",
+        "animationstart",
+        "audioend",
+        "audioprocess",
+        "audiostart",
+        "beforeinput",
+        "beforeunload",
+        "blur",
+        "boundary",
+        "canplay",
+        "canplaythrough",
+        "change",
+        "chargingchange",
+        "chargingtimechange",
+        "click",
+        "close",
+        "complete",
+        "compositionend",
+        "compositionstart",
+        "compositionupdate",
+        "contextmenu",
+        "controllerchange",
+        "copy",
+        "cut",
+        "dblclick",
+        "devicemotion",
+        "deviceorientation",
+        "deviceorientationabsolute",
+        "dischargingtimechange",
+        "drag",
+        "dragend",
+        "dragenter",
+        "dragexit",
+        "dragleave",
+        "dragover",
+        "dragstart",
+        "drop",
+        "durationchange",
+        "end",
+        "ended",
+        "error",
+        "focus",
+        "focusin",
+        "focusout",
+        "formdata",
+        "fullscreenchange",
+        "fullscreenerror",
+        "gamepadconnected",
+        "gamepaddisconnected",
+        "getCurrentPosition",
+        "hashchange",
+        "input",
+        "invalid",
+        "keydown",
+        "keypress",
+        "keyup",
+        "levelchange",
+        "load",
+        "loadeddata",
+        "loadedmetadata",
+        "loadstart",
+        "mark",
+        "merchantvalidation",
+        "message",
+        "mousedown",
+        "mouseenter",
+        "mouseleave",
+        "mousemove",
+        "mouseout",
+        "mouseover",
+        "mouseup",
+        "nomatch",
+        "open",
+        "pagehide",
+        "pageshow",
+        "paste",
+        "pause",
+        "paymentmethodchange",
+        "play",
+        "playing",
+        "popstate",
+        "progress",
+        "push",
+        "ratechange",
+        "readystatechange",
+        "removetrack",
+        "reset",
+        "resize",
+        "result",
+        "scroll",
+        "securitypolicyviolation",
+        "seeked",
+        "seeking",
+        "select",
+        "slotchange",
+        "soundend",
+        "soundprocess",
+        "soundstart",
+        "speechend",
+        "speecherror",
+        "speechstart",
+        "stalled",
+        "start",
+        "statechange",
+        "storage",
+        "submit",
+        "suspend",
+        "sync",
+        "timeupdate",
+        "toggle",
+        "touchcancel",
+        "touchend",
+        "touchmove",
+        "touchstart",
+        "transitioncancel",
+        "transitionend",
+        "transitionrun",
+        "transitionstart",
+        "unload",
+        "visibilitychange",
+        "volumechange",
+        "waiting",
+        "watchPosition",
+        "wheel",
+        "network-request",
+        "network-response",
+        "battery-status",
+        "geolocation",
+        "geolocation-error",
+        "network-status",
+        "speech-start",
+        "speech-end",
+        "speech-result",
+        "speech-error",
+        "speech-nomatch",
+        "speech-soundstart",
+        "speech-soundend",
+        "speech-audiostart",
+        "speech-audioend",
+        "speech-audioprocess",
+        "speech-soundprocess",
+        "speech-mark",
+        "speech-boundary",
+        "service-worker-controllerchange",
+        "service-worker-message",
+        "service-worker-statechange",
+        "indexeddb-success",
+        "indexeddb-error",
+        "indexeddb-upgradeneeded",
+        "indexeddb-blocked",
+        "tab-activated",
+        "navigation",
+        "ajax-request",
+        "fetch-request",
+        "options-changed"
+      ]
+    },
+    "details": {
+      "type": "object",
+      "description": "Additional details for specific events.",
+      "properties": {
+        "tabId": {
+          "type": "integer"
+        },
+        "url": {
+          "type": "string"
+        },
+        "tabTitle": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "status": {
+          "type": "integer"
+        },
+        "response": {
+          "type": "string"
+        },
+        "requestHeaders": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "coords": {
+          "type": "object",
+          "properties": {
+            "latitude": {
+              "type": "number"
+            },
+            "longitude": {
+              "type": "number"
+            },
+            "altitude": {
+              "type": ["number", "null"]
+            },
+            "accuracy": {
+              "type": "number"
+            },
+            "altitudeAccuracy": {
+              "type": ["number", "null"]
+            },
+            "heading": {
+              "type": ["number", "null"]
+            },
+            "speed": {
+              "type": ["number", "null"]
+            }
+          }
+        },
+        "charging": {
+          "type": "boolean"
+        },
+        "chargingTime": {
+          "type": "number"
+        },
+        "dischargingTime": {
+          "type": "number"
+        },
+        "level": {
+          "type": "number"
+        },
+        "downlink": {
+          "type": "number"
+        },
+        "effectiveType": {
+          "type": "string"
+        },
+        "rtt": {
+          "type": "number"
+        },
+        "saveData": {
+          "type": "boolean"
+        },
+        "initiator": {
+          "type": "string"
+        },
+        "stack": {
+          "type": "string"
+        },
+        "results": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "transcript": {
+                "type": "string"
+              },
+              "confidence": {
+                "type": "number"
+              }
+            }
+          }
+        },
+        "confidence": {
+          "type": "number"
+        },
+        "grammar": {
+          "type": "string"
+        },
+        "key": {
+          "type": "string"
+        },
+        "oldValue": {
+          "type": "string"
+        },
+        "newValue": {
+          "type": "string"
+        },
+        "detail": {
+          "type": "number"
+        },
+        "readyState": {
+          "type": "string"
+        },
+        "clientX": {
+          "type": "number"
+        },
+        "clientY": {
+          "type": "number"
+        },
+        "screenX": {
+          "type": "number"
+        },
+        "screenY": {
+          "type": "number"
+        },
+        "movementX": {
+          "type": "number"
+        },
+        "movementY": {
+          "type": "number"
+        },
+        "button": {
+          "type": "integer"
+        },
+        "buttons": {
+          "type": "integer"
+        },
+        "ctrlKey": {
+          "type": "boolean"
+        },
+        "shiftKey": {
+          "type": "boolean"
+        },
+        "altKey": {
+          "type": "boolean"
+        },
+        "metaKey": {
+          "type": "boolean"
+        },
+        "timeStamp": {
+          "type": "number"
+        },
+        "key": {
+          "type": "string"
+        },
+        "code": {
+          "type": "string"
+        },
+        "keyCode": {
+          "type": "integer"
+        },
+        "charCode": {
+          "type": "integer"
+        },
+        "which": {
+          "type": "integer"
+        },
+        "location": {
+          "type": "integer"
+        },
+        "repeat": {
+          "type": "boolean"
+        },
+        "touches": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "clientX": {
+                "type": "number"
+              },
+              "clientY": {
+                "type": "number"
+              },
+              "force": {
+                "type": "number"
+              },
+              "identifier": {
+                "type": "integer"
+              },
+              "radiusX": {
+                "type": "number"
+              },
+              "radiusY": {
+                "type": "number"
+              },
+              "rotationAngle": {
+                "type": "number"
+              }
+            }
+          }
+        },
+        "relatedTarget": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "inputType": {
+          "type": "string"
+        },
+        "isComposing": {
+          "type": "boolean"
+        },
+        "formData": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "elements": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "scrollX": {
+          "type": "number"
+        },
+        "scrollY": {
+          "type": "number"
+        },
+        "innerWidth": {
+          "type": "number"
+        },
+        "innerHeight": {
+          "type": "number"
+        },
+        "outerWidth": {
+          "type": "number"
+        },
+        "outerHeight": {
+          "type": "number"
+        },
+        "devicePixelRatio": {
+          "type": "number"
+        },
+        "oldURL": {
+          "type": "string"
+        },
+        "newURL": {
+          "type": "string"
+        },
+        "state": {
+          "type": "object"
+        },
+        "persisted": {
+          "type": "boolean"
+        },
+        "visibilityState": {
+          "type": "string"
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "clipboardData": {
+          "type": "string"
+        },
+        "types": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "returnValue": {
+          "type": "string"
+        },
+        "currentTime": {
+          "type": "number"
+        },
+        "duration": {
+          "type": "number"
+        },
+        "paused": {
+          "type": "boolean"
+        },
+        "volume": {
+          "type": "number"
+        },
+        "muted": {
+          "type": "boolean"
+        },
+        "playbackRate": {
+          "type": "number"
+        },
+        "defaultMuted": {
+          "type": "boolean"
+        },
+        "animationName": {
+          "type": "string"
+        },
+        "elapsedTime": {
+          "type": "number"
+        },
+        "pseudoElement": {
+          "type": "string"
+        },
+        "acceleration": {
+          "type": "object",
+          "properties": {
+            "x": {
+              "type": "number"
+            },
+            "y": {
+              "type": "number"
+            },
+            "z": {
+              "type": "number"
+            }
+          }
+        },
+        "accelerationIncludingGravity": {
+          "type": "object",
+          "properties": {
+            "x": {
+              "type": "number"
+            },
+            "y": {
+              "type": "number"
+            },
+            "z": {
+              "type": "number"
+            }
+          }
+        },
+        "rotationRate": {
+          "type": "object",
+          "properties": {
+            "alpha": {
+              "type": "number"
+            },
+            "beta": {
+              "type": "number"
+            },
+            "gamma": {
+              "type": "number"
+            }
+          }
+        },
+        "interval": {
+          "type": "number"
+        },
+        "alpha": {
+          "type": "number"
+        },
+        "beta": {
+          "type": "number"
+        },
+        "gamma": {
+          "type": "number"
+        },
+        "absolute": {
+          "type": "boolean"
+        },
+        "methodName": {
+          "type": "string"
+        },
+        "details": {
+          "type": "object"
+        },
+        "total": {
+          "type": "object"
+        },
+        "shippingAddress": {
+          "type": "object"
+        },
+        "assignedNodes": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        }
+      }
+    }
+  },
+  "required": ["sessionId", "userAgent", "operatingSystem", "screenResolution", "extensionVersion", "type", "timestamp"],
+  "additionalProperties": false
+}
