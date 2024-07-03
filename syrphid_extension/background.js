@@ -1,5 +1,6 @@
 let socket;
 let reconnectInterval = 5000;
+let sessionId = generateSessionId();
 
 function connectWebSocket() {
   browser.storage.local.get('wsServer', ({ wsServer }) => {
@@ -23,7 +24,9 @@ function connectWebSocket() {
   });
 }
 
-connectWebSocket();
+function generateSessionId() {
+  return '_' + Math.random().toString(36).substr(2, 9);
+}
 
 function sendToServer(data) {
   if (socket.readyState === WebSocket.OPEN) {
@@ -45,9 +48,16 @@ browser.runtime.onMessage.addListener((message) => {
 browser.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (changeInfo.url) {
     sendToServer({
+      sessionId: sessionId,
       type: "navigation",
       tabId: tabId,
       url: changeInfo.url,
+      timestamp: new Date().toISOString(),
+      userAgent: navigator.userAgent,
+      operatingSystem: navigator.platform,
+      screenResolution: `${window.screen.width}x${window.screen.height}`,
+      extensionVersion: browser.runtime.getManifest().version,
+      tabTitle: tab.title
     });
   }
 });
@@ -56,15 +66,27 @@ browser.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 browser.tabs.onActivated.addListener((activeInfo) => {
   browser.tabs.get(activeInfo.tabId, (tab) => {
     sendToServer({
+      sessionId: sessionId,
       type: "tab-activated",
       tabId: activeInfo.tabId,
       url: tab.url,
+      timestamp: new Date().toISOString(),
+      userAgent: navigator.userAgent,
+      operatingSystem: navigator.platform,
+      screenResolution: `${window.screen.width}x${window.screen.height}`,
+      extensionVersion: browser.runtime.getManifest().version,
+      tabTitle: tab.title
     });
   });
 });
 
 // Listen for messages from content scripts
 browser.runtime.onMessage.addListener((message) => {
+  message.sessionId = sessionId;
+  message.userAgent = navigator.userAgent;
+  message.operatingSystem = navigator.platform;
+  message.screenResolution = `${window.screen.width}x${window.screen.height}`;
+  message.extensionVersion = browser.runtime.getManifest().version;
   sendToServer(message);
 });
 
@@ -72,6 +94,7 @@ browser.runtime.onMessage.addListener((message) => {
 browser.webRequest.onBeforeRequest.addListener(
   function (details) {
     sendToServer({
+      sessionId: sessionId,
       type: "network-request",
       url: details.url,
       method: details.method,
@@ -88,6 +111,7 @@ browser.webRequest.onBeforeRequest.addListener(
 browser.webRequest.onCompleted.addListener(
   function (details) {
     sendToServer({
+      sessionId: sessionId,
       type: "network-response",
       url: details.url,
       statusCode: details.statusCode,
@@ -99,3 +123,4 @@ browser.webRequest.onCompleted.addListener(
   { urls: ["<all_urls>"] }
 );
 
+connectWebSocket();

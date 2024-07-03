@@ -1,5 +1,6 @@
 body {
   font-family: Arial, sans-serif;
+  padding: 20px;
 }
 
 h1, h2 {
@@ -22,4 +23,12 @@ button {
 
 button:hover {
   background-color: #45a049;
+}
+
+p {
+  margin: 5px 0;
+}
+
+#wsServer, #connectionStatus {
+  font-weight: bold;
 }
