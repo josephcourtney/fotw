@@ -1,6 +1,7 @@
 document.addEventListener("DOMContentLoaded", () => {
   const form = document.getElementById("optionsForm");
   const wsServerInput = document.getElementById("wsServer");
+  const logLevelInput = document.getElementById("logLevel");
   const eventCheckboxes = document.getElementById("eventCheckboxes");
   const resetDefaultsBtn = document.getElementById("resetDefaults");
 
@@ -121,8 +122,9 @@ document.addEventListener("DOMContentLoaded", () => {
   ];
 
   function loadOptions() {
-    browser.storage.local.get(["wsServer", "trackedEvents"], (data) => {
+    browser.storage.local.get(["wsServer", "logLevel", "trackedEvents"], (data) => {
       wsServerInput.value = data.wsServer || "ws://localhost:8080";
+      logLevelInput.value = data.logLevel || "info";
       const trackedEvents = data.trackedEvents || defaultEvents;
       eventCheckboxes.innerHTML = "";
       allEvents.forEach((event) => {
@@ -144,17 +146,18 @@ document.addEventListener("DOMContentLoaded", () => {
   function saveOptions(event) {
     event.preventDefault();
     const wsServer = wsServerInput.value;
+    const logLevel = logLevelInput.value;
     const trackedEvents = Array.from(
-      eventCheckboxes.querySelectorAll("input:checked"),
+      eventCheckboxes.querySelectorAll("input:checked")
     ).map((input) => input.name);
-    browser.storage.local.set({ wsServer, trackedEvents }, () => {
+    browser.storage.local.set({ wsServer, logLevel, trackedEvents }, () => {
       browser.runtime.sendMessage({ type: "options-changed" });
       alert("Options saved.");
     });
   }
 
   function resetDefaults() {
-    browser.storage.local.set({ trackedEvents: defaultEvents }, loadOptions);
+    browser.storage.local.set({ wsServer: "ws://localhost:8080", logLevel: "info", trackedEvents: defaultEvents }, loadOptions);
   }
 
   form.addEventListener("submit", saveOptions);
@@ -162,3 +165,4 @@ document.addEventListener("DOMContentLoaded", () => {
 
   loadOptions();
 });
+

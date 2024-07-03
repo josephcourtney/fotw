@@ -1,19 +1,26 @@
 <!doctype html>
 <html>
-  <head>
-    <title>Syrphid Options</title>
-    <link rel="stylesheet" href="styles.css" />
-  </head>
-  <body>
-    <h1>Syrphid Options</h1>
-    <form id="optionsForm">
-      <label for="wsServer">WebSocket Server:</label>
-      <input type="text" id="wsServer" name="wsServer" required />
-      <button type="submit">Save</button>
-    </form>
-    <h2>Event Tracking</h2>
-    <div id="eventCheckboxes"></div>
-    <button id="resetDefaults">Reset to Defaults</button>
-    <script src="options.js"></script>
-  </body>
+<head>
+  <title>Syrphid Options</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <h1>Syrphid Options</h1>
+  <form id="optionsForm">
+    <label for="wsServer">WebSocket Server:</label>
+    <input type="text" id="wsServer" name="wsServer" required />
+    <label for="logLevel">Log Level:</label>
+    <select id="logLevel" name="logLevel" required>
+      <option value="debug">Debug</option>
+      <option value="info">Info</option>
+      <option value="warn">Warn</option>
+      <option value="error">Error</option>
+    </select>
+    <button type="submit">Save</button>
+  </form>
+  <h2>Event Tracking</h2>
+  <div id="eventCheckboxes"></div>
+  <button id="resetDefaults">Reset to Defaults</button>
+  <script src="options.js"></script>
+</body>
 </html>
