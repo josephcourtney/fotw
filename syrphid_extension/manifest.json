@@ -1,0 +1,34 @@
+{
+  "manifest_version": 2,
+  "name": "Syrphid",
+  "version": "1.0",
+  "description": "Track all browser events and transmit to a local WebSocket server.",
+  "permissions": [
+    "activeTab",
+    "webRequest",
+    "webRequestBlocking",
+    "webNavigation",
+    "tabs",
+    "storage",
+    "geolocation",
+    "<all_urls>"
+  ],
+  "background": {
+    "scripts": ["background.js"]
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"]
+    }
+  ],
+  "browser_action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "options_page": "options.html"
+}
