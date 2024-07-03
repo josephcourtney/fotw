@@ -14,7 +14,16 @@
     "<all_urls>"
   ],
   "background": {
-    "scripts": ["background.js"]
+    "scripts": [
+      "background/constants.js",
+      "background/utils.js",
+      "background/state.js",
+      "background/websocket.js",
+      "background/listeners.js",
+      "background/handlers.js",
+      "background.js"
+    ],
+    "type": "module"
   },
   "content_scripts": [
     {
