@@ -1,6 +1,6 @@
 const eventConfigurations = {
-  DeviceMotionEvent: true,
-  DeviceOrientationEvent: true,
+  DeviceMotionEvent: !!window.DeviceMotionEvent,
+  DeviceOrientationEvent: !!window.DeviceOrientationEvent,
   abort: true,
   addtrack: true,
   animationcancel: true,
@@ -17,8 +17,6 @@ const eventConfigurations = {
   canplay: true,
   canplaythrough: true,
   change: true,
-  chargingchange: true,
-  chargingtimechange: true,
   click: true,
   close: true,
   complete: true,
@@ -26,14 +24,12 @@ const eventConfigurations = {
   compositionstart: true,
   compositionupdate: true,
   contextmenu: true,
-  controllerchange: true,
   copy: true,
   cut: true,
   dblclick: true,
-  devicemotion: true,
-  deviceorientation: true,
-  deviceorientationabsolute: true,
-  dischargingtimechange: true,
+  devicemotion: !!window.DeviceMotionEvent,
+  deviceorientation: !!window.DeviceOrientationEvent,
+  deviceorientationabsolute: !!window.DeviceOrientationEvent,
   drag: true,
   dragend: true,
   dragenter: true,
@@ -50,18 +46,14 @@ const eventConfigurations = {
   focusin: true,
   focusout: true,
   formdata: true,
-  fullscreenchange: true,
-  fullscreenerror: true,
-  gamepadconnected: true,
-  gamepaddisconnected: true,
-  getCurrentPosition: true,
+  fullscreenchange: !!document.fullscreenEnabled,
+  fullscreenerror: !!document.fullscreenEnabled,
   hashchange: true,
   input: true,
   invalid: true,
   keydown: true,
   keypress: true,
   keyup: true,
-  levelchange: true,
   load: true,
   loadeddata: true,
   loadedmetadata: true,
@@ -75,7 +67,7 @@ const eventConfigurations = {
   mouseout: true,
   mouseover: true,
   mouseup: true,
-  nomatch: true,
+  nomatch: !!window.SpeechRecognition || !!window.webkitSpeechRecognition,
   open: true,
   pagehide: true,
   pageshow: true,
@@ -86,13 +78,12 @@ const eventConfigurations = {
   playing: true,
   popstate: true,
   progress: true,
-  push: true,
   ratechange: true,
   readystatechange: true,
   removetrack: true,
   reset: true,
   resize: true,
-  result: true,
+  result: !!window.SpeechRecognition || !!window.webkitSpeechRecognition,
   scroll: true,
   securitypolicyviolation: true,
   seeked: true,
@@ -100,18 +91,17 @@ const eventConfigurations = {
   select: true,
   slotchange: true,
   soundend: true,
-  soundprocess: true,
-  soundstart: true,
-  speechend: true,
-  speecherror: true,
-  speechstart: true,
+  soundprocess: !!window.SpeechRecognition || !!window.webkitSpeechRecognition,
+  soundstart: !!window.SpeechRecognition || !!window.webkitSpeechRecognition,
+  speechend: !!window.SpeechRecognition || !!window.webkitSpeechRecognition,
+  speecherror: !!window.SpeechRecognition || !!window.webkitSpeechRecognition,
+  speechstart: !!window.SpeechRecognition || !!window.webkitSpeechRecognition,
   stalled: true,
-  start: true,
-  statechange: true,
+  start: !!window.SpeechRecognition || !!window.webkitSpeechRecognition,
   storage: true,
   submit: true,
   suspend: true,
-  sync: true,
+  sync: !!navigator.serviceWorker,
   timeupdate: true,
   toggle: true,
   touchcancel: true,
@@ -126,7 +116,6 @@ const eventConfigurations = {
   visibilitychange: true,
   volumechange: true,
   waiting: true,
-  watchPosition: true,
   wheel: true,
 };
 
@@ -530,140 +519,3 @@ document.addEventListener("visibilitychange", () => {
   };
   browser.runtime.sendMessage(eventData);
 });
-
-const batteryStatusEventProps = (battery) => ({
-  charging: battery.charging,
-  chargingTime: battery.chargingTime,
-  dischargingTime: battery.dischargingTime,
-  level: battery.level,
-});
-
-navigator.getBattery().then((battery) => {
-  const  updateBatteryStatus = () => {
-    const eventData = {
-      type: "battery-status",
-      ...batteryStatusEventProps(battery),
-      timestamp: new Date().toISOString(),
-    };
-    browser.runtime.sendMessage(eventData);
-  }
-
-  battery.addEventListener("chargingchange", updateBatteryStatus);
-  battery.addEventListener("levelchange", updateBatteryStatus);
-  battery.addEventListener("chargingtimechange", updateBatteryStatus);
-  battery.addEventListener("dischargingtimechange", updateBatteryStatus);
-
-  updateBatteryStatus();
-});
-
-const geolocationEventProps = (position) => ({
-  coords: {
-    latitude: position.coords.latitude,
-    longitude: position.coords.longitude,
-    altitude: position.coords.altitude,
-    accuracy: position.coords.accuracy,
-    altitudeAccuracy: position.coords.altitudeAccuracy,
-    heading: position.coords.heading,
-    speed: position.coords.speed,
-  },
-  timestamp: new Date(position.timestamp).toISOString(),
-});
-
-const geolocationErrorEventProps = (error) => ({
-  code: error.code,
-  message: error.message,
-});
-
-if (navigator.geolocation) {
-  navigator.geolocation.watchPosition(
-    (position) => {
-      const eventData = {
-        type: "geolocation",
-        ...geolocationEventProps(position),
-        timestamp: new Date(position.timestamp).toISOString(),
-      };
-      browser.runtime.sendMessage(eventData);
-    },
-    (error) => {
-      const eventData = {
-        type: "geolocation-error",
-        ...geolocationErrorEventProps(error),
-        timestamp: new Date().toISOString(),
-      };
-      browser.runtime.sendMessage(eventData);
-    },
-  );
-}
-
-const networkStatusEventProps = () => ({
-  downlink: navigator.connection.downlink,
-  effectiveType: navigator.connection.effectiveType,
-  rtt: navigator.connection.rtt,
-  saveData: navigator.connection.saveData,
-  type: navigator.connection.type,
-});
-
-if (navigator.connection) {
-  const updateNetworkStatus = () => {
-    const eventData = {
-      type: "network-status",
-      ...networkStatusEventProps(),
-      timestamp: new Date().toISOString(),
-    };
-    browser.runtime.sendMessage(eventData);
-  }
-
-  navigator.connection.addEventListener("change", updateNetworkStatus);
-  updateNetworkStatus();
-}
-
-// Speech Recognition and Synthesis Events
-if (window.SpeechRecognition || window.webkitSpeechRecognition) {
-  const recognition = new (window.SpeechRecognition ||
-    window.webkitSpeechRecognition)();
-
-  [
-    "start",
-    "end",
-    "result",
-    "error",
-    "nomatch",
-    "soundstart",
-    "soundend",
-    "speechstart",
-    "speechend",
-    "audiostart",
-    "audioend",
-    "audioprocess",
-    "soundprocess",
-    "mark",
-    "boundary",
-  ].forEach((event) => recognition.addEventListener(event, eventHandler));
-}
-
-// Service Worker Events
-if (navigator.serviceWorker) {
-  ["controllerchange", "message", "statechange"].forEach((event) => {
-    navigator.serviceWorker.addEventListener(event, eventHandler);
-  });
-}
-
-// IndexedDB Events
-if (window.indexedDB) {
-  const request = indexedDB.open("test");
-
-  ["success", "error", "upgradeneeded", "blocked"].forEach((event) => {
-    request.addEventListener(event, eventHandler);
-  });
-
-  request.onsuccess = (event) => {
-    const db = event.target.result;
-    ["abort", "error"].forEach((event) =>
-      db.addEventListener(event, eventHandler),
-    );
-  };
-}
-
-// Browser Storage Events
-window.addEventListener("storage", eventHandler);
-
