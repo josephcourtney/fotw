@@ -3,7 +3,8 @@ body {
   padding: 20px;
 }
 
-h1, h2 {
+h1,
+h2 {
   color: #333;
 }
 
@@ -15,7 +16,7 @@ button {
   display: block;
   margin-top: 10px;
   padding: 10px;
-  background-color: #4CAF50;
+  background-color: #4caf50;
   color: white;
   border: none;
   cursor: pointer;
@@ -29,6 +30,7 @@ p {
   margin: 5px 0;
 }
 
-#wsServer, #connectionStatus {
+#wsServer,
+#connectionStatus {
   font-weight: bold;
 }

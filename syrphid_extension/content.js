@@ -1,14 +1,23 @@
 const eventsToTrack = [
+  "DeviceMotionEvent",
+  "DeviceOrientationEvent",
   "abort",
+  "addtrack",
+  "animationcancel",
   "animationend",
   "animationiteration",
   "animationstart",
   "beforeinput",
+  "beforeunload",
   "blur",
   "canplay",
   "canplaythrough",
   "change",
+  "chargingchange",
+  "chargingtimechange",
   "click",
+  "close",
+  "complete",
   "compositionend",
   "compositionstart",
   "compositionupdate",
@@ -16,6 +25,10 @@ const eventsToTrack = [
   "copy",
   "cut",
   "dblclick",
+  "devicemotion",
+  "deviceorientation",
+  "deviceorientationabsolute",
+  "dischargingtimechange",
   "drag",
   "dragend",
   "dragenter",
@@ -31,11 +44,18 @@ const eventsToTrack = [
   "focusin",
   "focusout",
   "formdata",
+  "fullscreenchange",
+  "fullscreenerror",
+  "gamepadconnected",
+  "gamepaddisconnected",
+  "getCurrentPosition",
+  "hashchange",
   "input",
   "invalid",
   "keydown",
   "keypress",
   "keyup",
+  "levelchange",
   "load",
   "loadeddata",
   "loadedmetadata",
@@ -47,12 +67,18 @@ const eventsToTrack = [
   "mouseout",
   "mouseover",
   "mouseup",
+  "open",
+  "pagehide",
+  "pageshow",
   "paste",
   "pause",
   "play",
   "playing",
+  "popstate",
   "progress",
+  "push",
   "ratechange",
+  "removetrack",
   "reset",
   "resize",
   "scroll",
@@ -61,48 +87,32 @@ const eventsToTrack = [
   "seeking",
   "select",
   "stalled",
+  "storage",
   "submit",
   "suspend",
+  "sync",
   "timeupdate",
   "toggle",
   "touchcancel",
   "touchend",
   "touchmove",
   "touchstart",
+  "transitioncancel",
   "transitionend",
-  "volumechange",
-  "waiting",
-  "wheel",
-  "hashchange",
-  "popstate",
-  "pagehide",
-  "pageshow",
+  "transitionrun",
+  "transitionstart",
   "unload",
   "visibilitychange",
-  "beforeunload",
-  "storage",
-  "close",
-  // "message", // this ends up producing an endless cycle of events
-  "open",
-  "animationcancel",
-  "fullscreenchange",
-  "fullscreenerror",
-  "devicemotion",
-  "deviceorientation",
-  "deviceorientationabsolute",
-  "gamepadconnected",
-  "gamepaddisconnected",
-  "chargingchange",
-  "chargingtimechange",
-  "dischargingtimechange",
-  "levelchange",
-  "change",
-  "addtrack",
-  "removetrack",
-  "getCurrentPosition",
+  "volumechange",
+  "waiting",
   "watchPosition",
-  "sync",
-  "push"
+  "wheel",
+  // "message", // this ends up producing an endless cycle of events
+  // File System Events (File API)
+  // Note: These events are not directly accessible through event listeners
+  // Web Audio API Events (Not directly accessible through event listeners)
+  // Media Query Events
+  "change", // MediaQueryList event
 ];
 
 function trackEvent(event) {
@@ -282,9 +292,72 @@ function trackEvent(event) {
         muted: event.target.muted,
       };
       break;
-
-    default:
+    case "addtrack":
+    case "removetrack":
+      eventData.additionalData = {
+        // Specific data to capture
+      };
       break;
+    case "DeviceMotionEvent":
+      eventData.additionalData = {
+        acceleration: event.acceleration,
+        accelerationIncludingGravity: event.accelerationIncludingGravity,
+        rotationRate: event.rotationRate,
+        interval: event.interval,
+      };
+      break;
+    case "DeviceOrientationEvent":
+      eventData.additionalData = {
+        alpha: event.alpha,
+        beta: event.beta,
+        gamma: event.gamma,
+        absolute: event.absolute,
+      };
+      break;
+    case "complete":
+    case "abort":
+    case "error":
+      eventData.additionalData = {
+        // IndexedDB event data
+      };
+      break;
+    case "push":
+      eventData.additionalData = {
+        // Push event data
+      };
+      break;
+    case "sync":
+      eventData.additionalData = {
+        // Sync event data
+      };
+      break;
+    // Add cases for CSS Animation and Transition Events
+    case "animationstart":
+    case "animationiteration":
+    case "animationend":
+    case "transitionstart":
+    case "transitionrun":
+    case "transitionend":
+    case "transitioncancel":
+      eventData.additionalData = {
+        animationName: event.animationName,
+        elapsedTime: event.elapsedTime,
+      };
+      break;
+    case "change":
+      // Handle MediaQueryList events
+      if (event.target && event.target.media) {
+        eventData.additionalData = {
+          media: event.target.media,
+          matches: event.target.matches,
+        };
+      } else {
+        eventData.additionalData = {
+          value: event.target.value,
+        };
+      }
+      break;
+    // Add other cases as needed...
   }
 
   browser.runtime.sendMessage(eventData);
@@ -294,6 +367,10 @@ function trackEvent(event) {
 eventsToTrack.forEach((eventType) => {
   window.addEventListener(eventType, trackEvent, true);
 });
+
+// Media Query event listener setup
+const mediaQueryList = window.matchMedia("(max-width: 600px)");
+mediaQueryList.addEventListener("change", trackEvent);
 
 // Track AJAX requests
 (function (open) {
@@ -318,7 +395,7 @@ eventsToTrack.forEach((eventType) => {
           browser.runtime.sendMessage(eventData);
         }
       },
-      false
+      false,
     );
     open.call(this, method, url, async, user, pass);
   };
@@ -410,7 +487,7 @@ if (navigator.geolocation) {
         timestamp: new Date().toISOString(),
       };
       browser.runtime.sendMessage(eventData);
-    }
+    },
   );
 }
 

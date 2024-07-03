@@ -1,31 +1,46 @@
 let socket;
 let reconnectInterval = 5000;
 let sessionId = generateSessionId();
+let logLevel = "info"; // default log level
 
 function connectWebSocket() {
-  browser.storage.local.get('wsServer', ({ wsServer }) => {
-    socket = new WebSocket(wsServer || "ws://localhost:8080");
+  browser.storage.local.get(
+    ["wsServer", "logLevel"],
+    ({ wsServer, logLevel: storedLogLevel }) => {
+      logLevel = storedLogLevel || logLevel;
+      socket = new WebSocket(wsServer || "ws://localhost:8080");
 
-    socket.onopen = function () {
-      console.log("WebSocket is open now.");
-      browser.runtime.sendMessage({ type: 'ws-status', status: 'connected' });
-    };
+      socket.onopen = function () {
+        log("WebSocket is open now.", "info");
+        browser.runtime.sendMessage({ type: "ws-status", status: "connected" });
+      };
 
-    socket.onclose = function () {
-      console.log("WebSocket is closed now. Reconnecting...");
-      browser.runtime.sendMessage({ type: 'ws-status', status: 'disconnected' });
-      setTimeout(connectWebSocket, reconnectInterval);
-    };
+      socket.onclose = function () {
+        log("WebSocket is closed now. Reconnecting...", "warn");
+        browser.runtime.sendMessage({
+          type: "ws-status",
+          status: "disconnected",
+        });
+        setTimeout(connectWebSocket, reconnectInterval);
+      };
 
-    socket.onerror = function (error) {
-      console.log("WebSocket error: ", error);
-      browser.runtime.sendMessage({ type: 'ws-status', status: 'error' });
-    };
-  });
+      socket.onerror = function (error) {
+        log("WebSocket error: " + error, "error");
+        browser.runtime.sendMessage({ type: "ws-status", status: "error" });
+      };
+    },
+  );
+}
+
+function log(message, level) {
+  const levels = ["debug", "info", "warn", "error"];
+  if (levels.indexOf(level) >= levels.indexOf(logLevel)) {
+    console.log(`[${level.toUpperCase()}] ${message}`);
+  }
 }
 
 function generateSessionId() {
-  return '_' + Math.random().toString(36).substr(2, 9);
+  return "_" + Math.random().toString(36).substr(2, 9);
 }
 
 function sendToServer(data) {
@@ -35,10 +50,10 @@ function sendToServer(data) {
 }
 
 browser.runtime.onMessage.addListener((message) => {
-  if (message.type === 'reconnect') {
+  if (message.type === "reconnect") {
     connectWebSocket();
   }
-  if (message.type === 'options-changed') {
+  if (message.type === "options-changed") {
     socket.close();
     connectWebSocket();
   }
@@ -57,7 +72,7 @@ browser.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
       operatingSystem: navigator.platform,
       screenResolution: `${window.screen.width}x${window.screen.height}`,
       extensionVersion: browser.runtime.getManifest().version,
-      tabTitle: tab.title
+      tabTitle: tab.title,
     });
   }
 });
@@ -75,7 +90,7 @@ browser.tabs.onActivated.addListener((activeInfo) => {
       operatingSystem: navigator.platform,
       screenResolution: `${window.screen.width}x${window.screen.height}`,
       extensionVersion: browser.runtime.getManifest().version,
-      tabTitle: tab.title
+      tabTitle: tab.title,
     });
   });
 });
@@ -101,10 +116,10 @@ browser.webRequest.onBeforeRequest.addListener(
       tabId: details.tabId,
       requestId: details.requestId,
       timeStamp: details.timeStamp,
-      initiator: details.initiator || "unknown"
+      initiator: details.initiator || "unknown",
     });
   },
-  { urls: ["<all_urls>"] }
+  { urls: ["<all_urls>"] },
 );
 
 // Capture network responses
@@ -117,10 +132,10 @@ browser.webRequest.onCompleted.addListener(
       statusCode: details.statusCode,
       tabId: details.tabId,
       requestId: details.requestId,
-      timeStamp: details.timeStamp
+      timeStamp: details.timeStamp,
     });
   },
-  { urls: ["<all_urls>"] }
+  { urls: ["<all_urls>"] },
 );
 
 connectWebSocket();
