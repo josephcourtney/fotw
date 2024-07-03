@@ -2,20 +2,25 @@ let socket;
 let reconnectInterval = 5000;
 
 function connectWebSocket() {
-  socket = new WebSocket("ws://localhost:8080");
+  browser.storage.local.get('wsServer', ({ wsServer }) => {
+    socket = new WebSocket(wsServer || "ws://localhost:8080");
 
-  socket.onopen = function () {
-    console.log("WebSocket is open now.");
-  };
+    socket.onopen = function () {
+      console.log("WebSocket is open now.");
+      browser.runtime.sendMessage({ type: 'ws-status', status: 'connected' });
+    };
 
-  socket.onclose = function () {
-    console.log("WebSocket is closed now. Reconnecting...");
-    setTimeout(connectWebSocket, reconnectInterval);
-  };
+    socket.onclose = function () {
+      console.log("WebSocket is closed now. Reconnecting...");
+      browser.runtime.sendMessage({ type: 'ws-status', status: 'disconnected' });
+      setTimeout(connectWebSocket, reconnectInterval);
+    };
 
-  socket.onerror = function (error) {
-    console.log("WebSocket error: ", error);
-  };
+    socket.onerror = function (error) {
+      console.log("WebSocket error: ", error);
+      browser.runtime.sendMessage({ type: 'ws-status', status: 'error' });
+    };
+  });
 }
 
 connectWebSocket();
@@ -25,6 +30,16 @@ function sendToServer(data) {
     socket.send(JSON.stringify(data));
   }
 }
+
+browser.runtime.onMessage.addListener((message) => {
+  if (message.type === 'reconnect') {
+    connectWebSocket();
+  }
+  if (message.type === 'options-changed') {
+    socket.close();
+    connectWebSocket();
+  }
+});
 
 // Track tab updates
 browser.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
@@ -83,3 +98,4 @@ browser.webRequest.onCompleted.addListener(
   },
   { urls: ["<all_urls>"] }
 );
+

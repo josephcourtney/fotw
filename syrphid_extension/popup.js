@@ -8,9 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
     browser.storage.local.get('wsServer', (data) => {
       wsServerElement.textContent = data.wsServer || 'ws://localhost:8080';
     });
-    browser.runtime.sendMessage({ type: 'ws-status-check' }).catch(err => {
-      console.log("Error sending message:", err);
-    });
+    browser.runtime.sendMessage({ type: 'ws-status-check' });
   }
 
   openOptionsButton.addEventListener('click', () => {
@@ -18,9 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   reconnectButton.addEventListener('click', () => {
-    browser.runtime.sendMessage({ type: 'reconnect' }).catch(err => {
-      console.log("Error sending message:", err);
-    });
+    browser.runtime.sendMessage({ type: 'reconnect' });
   });
 
   browser.runtime.onMessage.addListener((message) => {
