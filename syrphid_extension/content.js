@@ -128,6 +128,31 @@ function loadTrackedEvents() {
   });
 }
 
+let environmentId, windowStateId, tabStateId;
+
+function fetchState() {
+  return Promise.all([
+    new Promise((resolve) => {
+      browser.runtime.sendMessage({ type: "query-environment" }, (response) => {
+        environmentId = response.data.id;
+        resolve();
+      });
+    }),
+    new Promise((resolve) => {
+      browser.runtime.sendMessage({ type: "query-window-state" }, (response) => {
+        windowStateId = response.data.id;
+        resolve();
+      });
+    }),
+    new Promise((resolve) => {
+      browser.runtime.sendMessage({ type: "query-tab-state" }, (response) => {
+        tabStateId = response.data.id;
+        resolve();
+      });
+    }),
+  ]);
+}
+
 function createBaseEventData(event) {
   return {
     sessionId: null,
@@ -141,6 +166,11 @@ function createBaseEventData(event) {
     },
     timestamp: new Date().toISOString(),
     additionalData: getEventProps(event),
+    references: {
+      environmentId,
+      windowStateId,
+      tabStateId,
+    },
   };
 }
 
@@ -251,6 +281,7 @@ const defaultEventProps = (event) => ({});
 const slotchangeEventProps = (event) => ({
   assignedNodes: event.target.assignedNodes(),
 });
+
 const readystatechangeEventProps = (event) => ({
   readyState: document.readyState,
 });
@@ -364,9 +395,7 @@ const visibilityChangeEventProps = (event) => ({
 });
 
 const clipboardEventProps = (event) => ({
-  clipboardData: event.clipboardData
-    ? event.clipboardData.getData("text")
-    : null,
+  clipboardData: event.clipboardData ? event.clipboardData.getData("text") : null,
   types: event.clipboardData ? event.clipboardData.types : [],
 });
 
@@ -422,8 +451,10 @@ function eventHandler(event) {
     return;
   }
 
-  const eventData = createBaseEventData(event);
-  browser.runtime.sendMessage(eventData);
+  fetchState().then(() => {
+    const eventData = createBaseEventData(event);
+    browser.runtime.sendMessage(eventData);
+  });
 }
 
 function updateEventListeners() {
@@ -473,7 +504,7 @@ function sendAjaxRequestEvent(method, url, status, response) {
           sendAjaxRequestEvent(method, url, this.status, this.responseText);
         }
       },
-      false,
+      false
     );
     open.call(this, method, url, async, user, pass);
   };
@@ -492,9 +523,7 @@ function sendFetchRequestEvent(response) {
         response: body,
         timestamp: new Date().toISOString(),
         stack,
-        initiator: document.currentScript
-          ? document.currentScript.src
-          : "unknown",
+        initiator: document.currentScript ? document.currentScript.src : "unknown",
         requestHeaders: response.headers,
       };
       browser.runtime.sendMessage(eventData);
@@ -519,3 +548,4 @@ document.addEventListener("visibilitychange", () => {
   };
   browser.runtime.sendMessage(eventData);
 });
+
