@@ -21,7 +21,7 @@
       "background/websocket.js",
       "background/listeners.js",
       "background/handlers.js",
-      "background.js"
+      "background/background.js"
     ],
     "type": "module"
   },

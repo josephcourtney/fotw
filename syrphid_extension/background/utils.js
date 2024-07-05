@@ -1,3 +1,5 @@
+import { sessionId } from "./websocket.js"; // Ensure sessionId is imported from websocket.js
+
 function generateSessionId() {
   return `_${Math.random().toString(36).substr(2, 9)}`;
 }
@@ -12,7 +14,11 @@ function log(message, config, level = "info") {
 function logChanges(newState, oldState, stateName, config) {
   for (const key in newState) {
     if (newState[key] !== oldState[key]) {
-      log(`${stateName} changed: ${key} from ${oldState[key]} to ${newState[key]}`, config, "info");
+      log(
+        `${stateName} changed: ${key} from ${oldState[key]} to ${newState[key]}`,
+        config,
+        "info",
+      );
     }
   }
 }
@@ -26,4 +32,16 @@ function createMessage(type, sessionId, details = {}) {
   };
 }
 
-export { generateSessionId, log, logChanges, createMessage };
+function debounce(func, wait) {
+  let timeout;
+  return function (...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+}
+
+export { generateSessionId, log, logChanges, createMessage, debounce };

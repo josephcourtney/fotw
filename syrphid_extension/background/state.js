@@ -1,5 +1,6 @@
-import { generateSessionId, logChanges, createMessage } from './utils.js';
-import { sendToWebSocketServer, sessionId, config } from './websocket.js';
+import { generateSessionId, logChanges, createMessage, log } from "./utils.js";
+import { sendToWebSocketServer, sessionId } from "./websocket.js";
+import { config } from "./config.js";
 
 let environment = {
   id: generateSessionId(),
@@ -7,143 +8,156 @@ let environment = {
   operatingSystem: navigator.platform,
   screenResolution: `${window.screen.width}x${window.screen.height}`,
   extensionVersion: browser.runtime.getManifest().version,
-  geolocation: null,
+  geolocation: {},
   networkStatus: null,
   batteryStatus: null,
 };
 
-let windowState = {
-  id: generateSessionId(),
-  innerWidth: window.innerWidth,
-  innerHeight: window.innerHeight,
-  outerWidth: window.outerWidth,
-  outerHeight: window.outerHeight,
-  devicePixelRatio: window.devicePixelRatio,
+let state = {
+  windows: {},
+  tabs: {},
 };
 
-let tabState = {};
+const GEOLOCATION_THRESHOLD_METERS = 10.0;
 
-const GEOLOCATION_THRESHOLD = 0.0001; // 0.0001 degrees ~ 32 feet in connecticut
-
-function calculateDistance(coord1, coord2) {
-  const { latitude: lat1, longitude: lon1 } = coord1;
-  const { latitude: lat2, longitude: lon2 } = coord2;
-
+function calculateDistance(
+  { latitude: lat1, longitude: lon1 },
+  { latitude: lat2, longitude: lon2 },
+) {
   const toRad = (value) => (value * Math.PI) / 180;
-
-  const R = 6371; // Radius of the Earth in km
+  const R = 6371;
   const dLat = toRad(lat2 - lat1);
   const dLon = toRad(lon2 - lon1);
   const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
-    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  const distance = R * c; // Distance in km
-  return distance;
+  return R * c * 1000;
 }
 
-function sendEnvironmentMessage() {
-  sendToWebSocketServer(createMessage('environment', sessionId, environment));
+function updateState(part, key, value) {
+  const oldState = { ...state[part] };
+  state[part][key] = value;
+  logChanges(state[part], oldState, part, config);
+  sendStateMessage(part, key);
 }
 
-function sendWindowStateMessage() {
-  sendToWebSocketServer(createMessage('window-state', sessionId, windowState));
+function sendStateMessage(part, key) {
+  if (state[part] && state[part][key] !== undefined) {
+    log(`Sending state message: ${part}-${key}`, config, "info");
+    sendToWebSocketServer(
+      createMessage(`${part}-state`, sessionId, state[part][key]),
+    );
+  }
 }
 
-function sendTabStateMessage() {
-  sendToWebSocketServer(createMessage('tab-state', sessionId, tabState));
-}
-
-// Initial state messages
 function sendInitialStateMessages() {
-  sendEnvironmentMessage();
-  sendWindowStateMessage();
-  sendTabStateMessage();
+  log("Sending initial state messages", config, "info");
+  sendStateMessage("environment", "environment");
+  Object.keys(state.windows).forEach((windowId) =>
+    sendStateMessage("windows", windowId),
+  );
+  Object.keys(state.tabs).forEach((tabId) => sendStateMessage("tabs", tabId));
 }
 
-function updateGeolocation(position) {
-  const oldGeolocation = environment.geolocation;
-  const newGeolocation = {
-    latitude: position.coords.latitude,
-    longitude: position.coords.longitude,
-    altitude: position.coords.altitude,
-    accuracy: position.coords.accuracy,
-    altitudeAccuracy: position.coords.altitudeAccuracy,
-    heading: position.coords.heading,
-    speed: position.coords.speed,
-  };
+function updateGeolocation({ coords }) {
+  log(`Updating geolocation: ${JSON.stringify(coords)}`, config, "info");
+  const newGeolocation = { ...coords };
 
-  if (!oldGeolocation || calculateDistance(oldGeolocation, newGeolocation) > GEOLOCATION_THRESHOLD) {
-    const oldEnvironment = { ...environment };
+  if (
+    !environment.geolocation.latitude ||
+    calculateDistance(environment.geolocation, newGeolocation) >
+      GEOLOCATION_THRESHOLD_METERS
+  ) {
+    log("Geolocation change detected, updating state", config, "info");
     environment.geolocation = newGeolocation;
-    logChanges(environment, oldEnvironment, 'Environment', config);
-    sendEnvironmentMessage();
+    sendStateMessage("environment", "geolocation");
   }
 }
 
 function updateNetworkStatus() {
-  const oldEnvironment = { ...environment };
-  environment.networkStatus = {
-    downlink: navigator.connection.downlink,
-    effectiveType: navigator.connection.effectiveType,
-    rtt: navigator.connection.rtt,
-    saveData: navigator.connection.saveData,
-    type: navigator.connection.type,
-  };
-  logChanges(environment, oldEnvironment, 'Environment', config);
-  sendEnvironmentMessage();
+  log("Updating network status", config, "info");
+  const { downlink, effectiveType, rtt, saveData, type } = navigator.connection;
+  environment.networkStatus = { downlink, effectiveType, rtt, saveData, type };
+  sendStateMessage("environment", "networkStatus");
 }
 
-function updateBatteryStatus(battery) {
-  const oldEnvironment = { ...environment };
+function updateBatteryStatus({
+  charging,
+  chargingTime,
+  dischargingTime,
+  level,
+}) {
+  log("Updating battery status", config, "info");
   environment.batteryStatus = {
-    charging: battery.charging,
-    chargingTime: battery.chargingTime,
-    dischargingTime: battery.dischargingTime,
-    level: battery.level,
+    charging,
+    chargingTime,
+    dischargingTime,
+    level,
   };
-  logChanges(environment, oldEnvironment, 'Environment', config);
-  sendEnvironmentMessage();
+  sendStateMessage("environment", "batteryStatus");
 }
 
-function updateWindowState() {
-  const oldWindowState = { ...windowState };
-  windowState = {
-    id: windowState.id,
-    innerWidth: window.innerWidth,
-    innerHeight: window.innerHeight,
-    outerWidth: window.outerWidth,
-    outerHeight: window.outerHeight,
-    devicePixelRatio: window.devicePixelRatio,
+function updateWindowState(
+  windowId,
+  { innerWidth, innerHeight, outerWidth, outerHeight, devicePixelRatio },
+) {
+  log(`Updating window state for window ID: ${windowId}`, config, "info");
+  const windowState = {
+    innerWidth,
+    innerHeight,
+    outerWidth,
+    outerHeight,
+    devicePixelRatio,
   };
-  logChanges(windowState, oldWindowState, 'Window state', config);
-  sendWindowStateMessage();
+  updateState("windows", windowId, windowState);
 }
 
 function updateTabState(tabId, changeInfo, tab) {
   if (!tab) return;
-  const oldTabState = { ...tabState[tabId] };
-  tabState[tabId] = {
-    url: tab.url,
-    title: tab.title,
-    status: tab.status,
-  };
-  logChanges(tabState[tabId], oldTabState, 'Tab state', config);
-  sendTabStateMessage();
+  log(`Updating tab state for tab ID: ${tabId}`, config, "info");
+  const { url, title, status } = tab;
+  updateState("tabs", tabId, { url, title, status });
+}
+
+function handleWindowCreated(windowId) {
+  if (!windowId || state.windows[windowId]) {
+    log(`Invalid or existing window ID: ${windowId}`, config, "warn");
+    return;
+  }
+
+  log(`Adding window: ${windowId}`, config, "info");
+  state.windows[windowId] = { focused: false, tabs: [] };
+}
+
+function handleWindowRemoved(windowId) {
+  log(`Removing window: ${windowId}`, config, "info");
+  delete state.windows[windowId];
+}
+
+function handleWindowFocusChanged(windowId) {
+  log(`Updating window focus: ${windowId}`, config, "info");
+  Object.keys(state.windows).forEach((id) => {
+    state.windows[id].focused = id === windowId;
+  });
+}
+
+function initializeState() {
+  log("Initializing state", config, "info");
+  state = { windows: {}, tabs: {} };
 }
 
 export {
   environment,
-  windowState,
-  tabState,
+  state,
   updateGeolocation,
   updateNetworkStatus,
   updateBatteryStatus,
   updateWindowState,
   updateTabState,
-  sendEnvironmentMessage,
-  sendWindowStateMessage,
-  sendTabStateMessage,
   sendInitialStateMessages,
+  handleWindowCreated,
+  handleWindowRemoved,
+  handleWindowFocusChanged,
+  initializeState,
 };
