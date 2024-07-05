@@ -1,6 +1,6 @@
-import { generateSessionId, logChanges, createMessage, log } from "./utils.js";
-import { sendToWebSocketServer, sessionId } from "./websocket.js";
-import { config } from "./config.js";
+import { generateSessionId, logChanges, createMessage, log } from './utils.js';
+import { sendToWebSocketServer, sessionId } from './websocket.js';
+import { config } from './config.js';
 
 let environment = {
   id: generateSessionId(),
@@ -15,24 +15,18 @@ let environment = {
 
 let state = {
   windows: {},
-  tabs: {},
+  tabs: {}
 };
 
 const GEOLOCATION_THRESHOLD_METERS = 10.0;
 
-function calculateDistance(
-  { latitude: lat1, longitude: lon1 },
-  { latitude: lat2, longitude: lon2 },
-) {
+function calculateDistance({ latitude: lat1, longitude: lon1 }, { latitude: lat2, longitude: lon2 }) {
   const toRad = (value) => (value * Math.PI) / 180;
   const R = 6371;
   const dLat = toRad(lat2 - lat1);
   const dLon = toRad(lon2 - lon1);
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c * 1000;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)) * 1000;
 }
 
 function updateState(part, key, value) {
@@ -114,7 +108,9 @@ function updateWindowState(
 }
 
 function updateTabState(tabId, changeInfo, tab) {
-  if (!tab) return;
+  if (!tab) {
+    return;
+  }
   log(`Updating tab state for tab ID: ${tabId}`, config, "info");
   const { url, title, status } = tab;
   updateState("tabs", tabId, { url, title, status });

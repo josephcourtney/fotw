@@ -1,60 +1,3 @@
-let config = {};
-
-const log = (message, level = "info") => {
-  const levels = ["debug", "info", "warn", "error"];
-  if (levels.indexOf(level) >= levels.indexOf(config.LOG_LEVEL)) {
-    console.log(`[${level.toUpperCase()}] ${message}`);
-  }
-};
-
-const fetchConfig = () => {
-  return new Promise((resolve) => {
-    browser.runtime.sendMessage({ type: "query-config" }, (response) => {
-      if (response && response.config) {
-        config = response.config;
-        resolve();
-      }
-    });
-  });
-};
-
-const eventBuffer = {};
-const BUFFER_MAX_AGE_MS = 200;
-const BUFFER_MAX_SIZE = 100;
-
-const bufferEvent = (eventData) => {
-  const eventType = eventData.type;
-  if (!eventBuffer[eventType]) {
-    eventBuffer[eventType] = [];
-  }
-  eventBuffer[eventType].push(eventData);
-
-  if (eventBuffer[eventType].length === 1) {
-    setTimeout(() => flushEventBuffer(eventType), BUFFER_MAX_AGE_MS);
-  }
-
-  if (eventBuffer[eventType].length >= 50) {
-    flushEventBuffer(eventType);
-  }
-
-  if (eventBuffer[eventType].length > BUFFER_MAX_SIZE) {
-    eventBuffer[eventType].shift();
-  }
-};
-
-const flushEventBuffer = (eventType) => {
-  if (eventBuffer[eventType] && eventBuffer[eventType].length > 0) {
-    const bufferedEvents = eventBuffer[eventType];
-    delete eventBuffer[eventType];
-    const aggregatedEvent = {
-      type: `${eventType}-aggregated`,
-      events: bufferedEvents,
-      timestamp: new Date().toISOString(),
-    };
-    browser.runtime.sendMessage(aggregatedEvent);
-  }
-};
-
 const debounce = (func, wait) => {
   let timeout;
   return function (...args) {
@@ -67,131 +10,11 @@ const debounce = (func, wait) => {
   };
 };
 
-const eventConfigurations = {
-  DeviceMotionEvent: !!window.DeviceMotionEvent,
-  DeviceOrientationEvent: !!window.DeviceOrientationEvent,
-  abort: true,
-  addtrack: true,
-  animationcancel: true,
-  animationend: true,
-  animationiteration: true,
-  animationstart: true,
-  audioend: true,
-  audioprocess: true,
-  audiostart: true,
-  beforeinput: true,
-  beforeunload: true,
-  blur: true,
-  boundary: true,
-  canplay: true,
-  canplaythrough: true,
-  change: true,
-  click: true,
-  close: true,
-  complete: true,
-  compositionend: true,
-  compositionstart: true,
-  compositionupdate: true,
-  contextmenu: true,
-  copy: true,
-  cut: true,
-  dblclick: true,
-  devicemotion: !!window.DeviceMotionEvent,
-  deviceorientation: !!window.DeviceOrientationEvent,
-  deviceorientationabsolute: !!window.DeviceOrientationEvent,
-  drag: true,
-  dragend: true,
-  dragenter: true,
-  dragexit: true,
-  dragleave: true,
-  dragover: true,
-  dragstart: true,
-  drop: true,
-  durationchange: true,
-  end: true,
-  ended: true,
-  error: true,
-  focus: true,
-  focusin: true,
-  focusout: true,
-  formdata: true,
-  fullscreenchange: !!document.fullscreenEnabled,
-  fullscreenerror: !!document.fullscreenEnabled,
-  hashchange: true,
-  input: true,
-  invalid: true,
-  keydown: true,
-  keypress: true,
-  keyup: true,
-  load: true,
-  loadeddata: true,
-  loadedmetadata: true,
-  loadstart: true,
-  mark: true,
-  merchantvalidation: true,
-  mousedown: true,
-  mouseenter: true,
-  mouseleave: true,
-  mousemove: true,
-  mouseout: true,
-  mouseover: true,
-  mouseup: true,
-  nomatch: !!window.SpeechRecognition || !!window.webkitSpeechRecognition,
-  open: true,
-  pagehide: true,
-  pageshow: true,
-  paste: true,
-  pause: true,
-  paymentmethodchange: true,
-  play: true,
-  playing: true,
-  popstate: true,
-  progress: true,
-  ratechange: true,
-  readystatechange: true,
-  removetrack: true,
-  reset: true,
-  resize: true,
-  result: !!window.SpeechRecognition || !!window.webkitSpeechRecognition,
-  scroll: true,
-  securitypolicyviolation: true,
-  seeked: true,
-  seeking: true,
-  select: true,
-  slotchange: true,
-  soundend: true,
-  soundprocess: !!window.SpeechRecognition || !!window.webkitSpeechRecognition,
-  soundstart: !!window.SpeechRecognition || !!window.webkitSpeechRecognition,
-  speechend: !!window.SpeechRecognition || !!window.webkitSpeechRecognition,
-  speecherror: !!window.SpeechRecognition || !!window.webkitSpeechRecognition,
-  speechstart: !!window.SpeechRecognition || !!window.webkitSpeechRecognition,
-  stalled: true,
-  start: !!window.SpeechRecognition || !!window.webkitSpeechRecognition,
-  storage: true,
-  submit: true,
-  suspend: true,
-  sync: !!navigator.serviceWorker,
-  timeupdate: true,
-  toggle: true,
-  touchcancel: true,
-  touchend: true,
-  touchmove: true,
-  touchstart: true,
-  transitioncancel: true,
-  transitionend: true,
-  transitionrun: true,
-  transitionstart: true,
-  unload: true,
-  visibilitychange: true,
-  volumechange: true,
-  waiting: true,
-  wheel: true,
-};
 
 let trackedEvents = [];
 
 const loadTrackedEvents = () => {
-  log("Loading tracked events", config, "info");
+  window.log("Loading tracked events", window.config, "info");
   browser.storage.local.get("trackedEvents").then((data) => {
     trackedEvents = data.trackedEvents || [];
     updateEventListeners();
@@ -201,7 +24,7 @@ const loadTrackedEvents = () => {
 let environmentId, windowStateId, tabStateId;
 
 const fetchState = () => {
-  log("Fetching state", config, "info");
+  window.log("Fetching state", window.config, "info");
   return Promise.all([
     new Promise((resolve) => {
       browser.runtime.sendMessage({ type: "query-environment" }, (response) => {
@@ -233,26 +56,6 @@ const fetchState = () => {
   ]);
 };
 
-const createBaseEventData = (event) => {
-  return {
-    sessionId: null,
-    type: "user-interaction",
-    event: event.type,
-    target: {
-      tagName: event.target.tagName,
-      id: event.target.id,
-      className: event.target.className,
-      name: event.target.name,
-    },
-    timestamp: new Date().toISOString(),
-    additionalData: getEventProps(event),
-    references: {
-      environmentId,
-      windowStateId,
-      tabStateId,
-    },
-  };
-};
 
 const getEventProps = (event) => {
   const eventPropsMap = {
@@ -529,7 +332,7 @@ const speechRecognitionEventProps = (event) => ({
 });
 
 const eventHandler = (event) => {
-  log(`Event triggered: ${event.type}`, config, "debug");
+  window.log(`Event triggered: ${event.type}`, window.config, "debug");
   if (!trackedEvents.includes(event.type)) {
     return;
   }
@@ -537,9 +340,9 @@ const eventHandler = (event) => {
   fetchState().then(() => {
     const eventData = createBaseEventData(event);
     if (["mousemove", "drag"].includes(event.type)) {
-      bufferEvent(eventData);
+      window.bufferEvent(eventData);
     } else {
-      log(`Sending event data: ${JSON.stringify(eventData)}`, config, "debug");
+      window.log(`Sending event data: ${JSON.stringify(eventData)}`, window.config, "debug");
       browser.runtime.sendMessage(eventData);
     }
   });
@@ -549,14 +352,14 @@ const debounced_events = [];
 const debouncedEventHandler = debounce(eventHandler, 100);
 
 const updateEventListeners = () => {
-  log("Updating event listeners", config, "info");
-  Object.keys(eventConfigurations).forEach((eventType) => {
+  window.log("Updating event listeners", window.config, "info");
+  Object.keys(window.eventConfigurations).forEach((eventType) => {
     window.removeEventListener(eventType, eventHandler, true);
   });
 
   trackedEvents.forEach((eventType) => {
-    if (eventConfigurations[eventType]) {
-      log(`Adding event listener for: ${eventType}`, config, "debug");
+    if (window.eventConfigurations[eventType]) {
+      window.log(`Adding event listener for: ${eventType}`, window.config, "debug");
       const handler = debounced_events.includes(eventType)
         ? debouncedEventHandler
         : eventHandler;
@@ -571,7 +374,7 @@ fetchConfig().then(() => {
 
 browser.storage.onChanged.addListener((changes, area) => {
   if (area === "local" && changes.trackedEvents) {
-    log("Tracked events changed", config, "info");
+    window.log("Tracked events changed", window.config, "info");
     trackedEvents = changes.trackedEvents.newValue || [];
     updateEventListeners();
   }
@@ -592,9 +395,9 @@ const sendAjaxRequestEvent = (method, url, status, response) => {
     stack,
     initiator: document.currentScript ? document.currentScript.src : "unknown",
   };
-  log(
+  window.log(
     `Sending AJAX request event: ${JSON.stringify(eventData)}`,
-    config,
+    window.config,
     "debug",
   );
   browser.runtime.sendMessage(eventData);
@@ -633,9 +436,9 @@ const sendFetchRequestEvent = (response) => {
           : "unknown",
         requestHeaders: response.headers,
       };
-      log(
+      window.log(
         `Sending fetch request event: ${JSON.stringify(eventData)}`,
-        config,
+        window.config,
         "debug",
       );
       browser.runtime.sendMessage(eventData);
@@ -658,9 +461,9 @@ document.addEventListener("visibilitychange", () => {
     hidden: document.hidden,
     timestamp: new Date().toISOString(),
   };
-  log(
+  window.log(
     `Document visibility change event: ${JSON.stringify(eventData)}`,
-    config,
+    window.config,
     "debug",
   );
   browser.runtime.sendMessage(eventData);
