@@ -1,3 +1,72 @@
+let config = {};
+
+const log = (message, level = "info") => {
+  const levels = ["debug", "info", "warn", "error"];
+  if (levels.indexOf(level) >= levels.indexOf(config.LOG_LEVEL)) {
+    console.log(`[${level.toUpperCase()}] ${message}`);
+  }
+};
+
+const fetchConfig = () => {
+  return new Promise((resolve) => {
+    browser.runtime.sendMessage({ type: "query-config" }, (response) => {
+      if (response && response.config) {
+        config = response.config;
+        resolve();
+      }
+    });
+  });
+};
+
+const eventBuffer = {};
+const BUFFER_MAX_AGE_MS = 200;
+const BUFFER_MAX_SIZE = 100;
+
+const bufferEvent = (eventData) => {
+  const eventType = eventData.type;
+  if (!eventBuffer[eventType]) {
+    eventBuffer[eventType] = [];
+  }
+  eventBuffer[eventType].push(eventData);
+
+  if (eventBuffer[eventType].length === 1) {
+    setTimeout(() => flushEventBuffer(eventType), BUFFER_MAX_AGE_MS);
+  }
+
+  if (eventBuffer[eventType].length >= 50) {
+    flushEventBuffer(eventType);
+  }
+
+  if (eventBuffer[eventType].length > BUFFER_MAX_SIZE) {
+    eventBuffer[eventType].shift();
+  }
+};
+
+const flushEventBuffer = (eventType) => {
+  if (eventBuffer[eventType] && eventBuffer[eventType].length > 0) {
+    const bufferedEvents = eventBuffer[eventType];
+    delete eventBuffer[eventType];
+    const aggregatedEvent = {
+      type: `${eventType}-aggregated`,
+      events: bufferedEvents,
+      timestamp: new Date().toISOString(),
+    };
+    browser.runtime.sendMessage(aggregatedEvent);
+  }
+};
+
+const debounce = (func, wait) => {
+  let timeout;
+  return function (...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+};
+
 const eventConfigurations = {
   DeviceMotionEvent: !!window.DeviceMotionEvent,
   DeviceOrientationEvent: !!window.DeviceOrientationEvent,
@@ -121,39 +190,50 @@ const eventConfigurations = {
 
 let trackedEvents = [];
 
-function loadTrackedEvents() {
-  browser.storage.local.get("trackedEvents", (data) => {
+const loadTrackedEvents = () => {
+  log("Loading tracked events", config, "info");
+  browser.storage.local.get("trackedEvents").then((data) => {
     trackedEvents = data.trackedEvents || [];
     updateEventListeners();
   });
-}
+};
 
 let environmentId, windowStateId, tabStateId;
 
-function fetchState() {
+const fetchState = () => {
+  log("Fetching state", config, "info");
   return Promise.all([
     new Promise((resolve) => {
       browser.runtime.sendMessage({ type: "query-environment" }, (response) => {
-        environmentId = response.data.id;
+        if (response && response.data) {
+          environmentId = response.data.id;
+        }
         resolve();
       });
     }),
     new Promise((resolve) => {
-      browser.runtime.sendMessage({ type: "query-window-state" }, (response) => {
-        windowStateId = response.data.id;
-        resolve();
-      });
+      browser.runtime.sendMessage(
+        { type: "query-window-state" },
+        (response) => {
+          if (response && response.data) {
+            windowStateId = response.data.id;
+          }
+          resolve();
+        },
+      );
     }),
     new Promise((resolve) => {
       browser.runtime.sendMessage({ type: "query-tab-state" }, (response) => {
-        tabStateId = response.data.id;
+        if (response && response.data) {
+          tabStateId = response.data.id;
+        }
         resolve();
       });
     }),
   ]);
-}
+};
 
-function createBaseEventData(event) {
+const createBaseEventData = (event) => {
   return {
     sessionId: null,
     type: "user-interaction",
@@ -172,9 +252,9 @@ function createBaseEventData(event) {
       tabStateId,
     },
   };
-}
+};
 
-function getEventProps(event) {
+const getEventProps = (event) => {
   const eventPropsMap = {
     mousemove: mouseEventProps,
     click: mouseEventProps,
@@ -274,7 +354,7 @@ function getEventProps(event) {
   };
 
   return (eventPropsMap[event.type] || defaultEventProps)(event);
-}
+};
 
 const defaultEventProps = (event) => ({});
 
@@ -395,7 +475,9 @@ const visibilityChangeEventProps = (event) => ({
 });
 
 const clipboardEventProps = (event) => ({
-  clipboardData: event.clipboardData ? event.clipboardData.getData("text") : null,
+  clipboardData: event.clipboardData
+    ? event.clipboardData.getData("text")
+    : null,
   types: event.clipboardData ? event.clipboardData.types : [],
 });
 
@@ -446,32 +528,50 @@ const speechRecognitionEventProps = (event) => ({
   grammar: event.grammar,
 });
 
-function eventHandler(event) {
+const eventHandler = (event) => {
+  log(`Event triggered: ${event.type}`, config, "debug");
   if (!trackedEvents.includes(event.type)) {
     return;
   }
 
   fetchState().then(() => {
     const eventData = createBaseEventData(event);
-    browser.runtime.sendMessage(eventData);
+    if (["mousemove", "drag"].includes(event.type)) {
+      bufferEvent(eventData);
+    } else {
+      log(`Sending event data: ${JSON.stringify(eventData)}`, config, "debug");
+      browser.runtime.sendMessage(eventData);
+    }
   });
-}
+};
 
-function updateEventListeners() {
+const debounced_events = [];
+const debouncedEventHandler = debounce(eventHandler, 100);
+
+const updateEventListeners = () => {
+  log("Updating event listeners", config, "info");
   Object.keys(eventConfigurations).forEach((eventType) => {
     window.removeEventListener(eventType, eventHandler, true);
   });
 
   trackedEvents.forEach((eventType) => {
     if (eventConfigurations[eventType]) {
-      window.addEventListener(eventType, eventHandler, true);
+      log(`Adding event listener for: ${eventType}`, config, "debug");
+      const handler = debounced_events.includes(eventType)
+        ? debouncedEventHandler
+        : eventHandler;
+      window.addEventListener(eventType, handler, true);
     }
   });
-}
+};
 
-loadTrackedEvents();
+fetchConfig().then(() => {
+  loadTrackedEvents();
+});
+
 browser.storage.onChanged.addListener((changes, area) => {
   if (area === "local" && changes.trackedEvents) {
+    log("Tracked events changed", config, "info");
     trackedEvents = changes.trackedEvents.newValue || [];
     updateEventListeners();
   }
@@ -480,7 +580,7 @@ browser.storage.onChanged.addListener((changes, area) => {
 const mediaQueryList = window.matchMedia("(max-width: 600px)");
 mediaQueryList.addEventListener("change", eventHandler);
 
-function sendAjaxRequestEvent(method, url, status, response) {
+const sendAjaxRequestEvent = (method, url, status, response) => {
   const stack = new Error().stack.split("\n").slice(1).join("\n");
   const eventData = {
     type: "ajax-request",
@@ -492,8 +592,13 @@ function sendAjaxRequestEvent(method, url, status, response) {
     stack,
     initiator: document.currentScript ? document.currentScript.src : "unknown",
   };
+  log(
+    `Sending AJAX request event: ${JSON.stringify(eventData)}`,
+    config,
+    "debug",
+  );
   browser.runtime.sendMessage(eventData);
-}
+};
 
 (function (open) {
   XMLHttpRequest.prototype.open = function (method, url, async, user, pass) {
@@ -504,13 +609,13 @@ function sendAjaxRequestEvent(method, url, status, response) {
           sendAjaxRequestEvent(method, url, this.status, this.responseText);
         }
       },
-      false
+      false,
     );
     open.call(this, method, url, async, user, pass);
   };
 })(XMLHttpRequest.prototype.open);
 
-function sendFetchRequestEvent(response) {
+const sendFetchRequestEvent = (response) => {
   const stack = new Error().stack.split("\n").slice(1).join("\n");
   return response
     .clone()
@@ -523,12 +628,19 @@ function sendFetchRequestEvent(response) {
         response: body,
         timestamp: new Date().toISOString(),
         stack,
-        initiator: document.currentScript ? document.currentScript.src : "unknown",
+        initiator: document.currentScript
+          ? document.currentScript.src
+          : "unknown",
         requestHeaders: response.headers,
       };
+      log(
+        `Sending fetch request event: ${JSON.stringify(eventData)}`,
+        config,
+        "debug",
+      );
       browser.runtime.sendMessage(eventData);
     });
-}
+};
 
 (function (fetch) {
   window.fetch = function () {
@@ -546,6 +658,10 @@ document.addEventListener("visibilitychange", () => {
     hidden: document.hidden,
     timestamp: new Date().toISOString(),
   };
+  log(
+    `Document visibility change event: ${JSON.stringify(eventData)}`,
+    config,
+    "debug",
+  );
   browser.runtime.sendMessage(eventData);
 });
-
