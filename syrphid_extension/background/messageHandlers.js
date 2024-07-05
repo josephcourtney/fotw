@@ -1,91 +1,74 @@
-import {
-  connectWebSocket,
-  sendToWebSocketServer,
-  sessionId,
-  websocket,
-} from "./websocket.js";
-import { config } from "./config.js";
+import { connectWebSocket, sendToWebSocketServer, getSessionId } from "./websocket.js";
+import { getConfig } from "./config.js";
 import { environment, state } from "./state.js";
 import { log, createMessage } from "./utils.js";
 
-const logAndRespond = (message, config, level, response, sendResponse) => {
-  log(message, config, level);
-  sendResponse(response);
-};
-
-const getWebSocketStatus = () => {
-  return websocket && websocket.readyState === WebSocket.OPEN
-    ? "connected"
-    : "disconnected";
-};
-
 const handleRuntimeMessage = async (message, sender, sendResponse) => {
-  log(`Handling runtime message: ${JSON.stringify(message)}`, config, "debug");
+  log(`Handling runtime message: ${JSON.stringify(message)}`, "debug");
   try {
     switch (message.type) {
       case "reconnect":
-        log("Reconnecting WebSocket", config, "info");
+        log("Reconnecting WebSocket", "info");
         connectWebSocket();
         sendResponse({ result: "reconnected" });
         break;
+
       case "options-changed":
-        log("Options changed, reconnecting WebSocket", config, "info");
-        if (websocket) {
-          websocket.close();
-        }
+        log("Options changed, reconnecting WebSocket", "info");
         connectWebSocket();
-        updateEventListeners();
         sendResponse({ result: "options-changed" });
         break;
+
       case "ws-status-check":
-        log("Checking WebSocket status", config, "info");
+        log("Checking WebSocket status", "info");
         sendResponse({
           type: "ws-status",
-          status:
-            websocket && websocket.readyState === WebSocket.OPEN
-              ? "connected"
-              : "disconnected",
+          status: getWebSocketStatus(),
         });
         break;
+
       case "query-environment":
-        log("Querying environment", config, "debug");
+        log("Querying environment", "debug");
         sendResponse({ type: "environment", data: environment });
         break;
+
       case "query-window-state":
-        log(`Querying window state`, config, "debug");
-        browser.windows.getCurrent().then((window) => {
-          sendResponse({
-            type: "window-state",
-            data: state.windows[window.id],
-          });
+        log(`Querying window state`, "debug");
+        const windowState = await browser.windows.getCurrent();
+        sendResponse({
+          type: "window-state",
+          data: state.windows[windowState.id],
         });
         break;
+
       case "query-tab-state":
-        log("Querying tab state", config, "debug");
+        log("Querying tab state", "debug");
         const tabs = await browser.tabs.query({
           active: true,
           currentWindow: true,
         });
         sendResponse({ type: "tab-state", data: state.tabs[tabs[0].id] });
         break;
+
       case "query-config":
-        log("Querying config", config, "debug");
-        sendResponse({ type: "config", config });
+        log("Querying config", "debug");
+        sendResponse({ type: "config", data: getConfig() });
         break;
+
       default:
-        log(
-          `Sending message to WebSocket server: ${JSON.stringify(message)}`,
-          config,
-          "debug",
-        );
-        sendToWebSocketServer(createMessage(message.type, sessionId, message));
+        log(`Sending message to WebSocket server: ${JSON.stringify(message)}`, "debug");
+        sendToWebSocketServer(createMessage(message.type, getSessionId(), message));
         sendResponse({ result: "message-sent" });
     }
   } catch (error) {
-    log(`Error handling message: ${error.message}`, config, "error");
+    log(`Error handling message: ${error.message}`, "error");
     sendResponse({ error: error.message });
   }
   return true;
+};
+
+const getWebSocketStatus = () => {
+  return websocket && websocket.readyState === WebSocket.OPEN ? "connected" : "disconnected";
 };
 
 export { handleRuntimeMessage };

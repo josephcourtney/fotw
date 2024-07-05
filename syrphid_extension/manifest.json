@@ -15,12 +15,13 @@
 	],
 	"background": {
 		"scripts": [
-			"background/constants.js",
-			"background/utils.js",
-			"background/state.js",
-			"background/websocket.js",
+			"background/config.js",
 			"background/listeners.js",
-			"background/handlers.js",
+			"background/logger.js",
+			"background/messageHandlers.js",
+			"background/state.js",
+			"background/utils.js",
+			"background/websocket.js",
 			"background/background.js"
 		],
 		"type": "module"
@@ -29,10 +30,13 @@
 		{
 			"matches": ["<all_urls>"],
 			"js": [
-				"content/config.js",
-				"content/logger.js",
+				"content/utils.js",
+				"content/stateFetcher.js",
+				"content/eventHandler.js",
 				"content/buffer.js",
+				"content/config.js",
 				"content/eventConfigurations.js",
+				"content/logger.js",
 				"content/content.js"
 			]
 		}

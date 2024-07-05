@@ -1,5 +1,6 @@
-// syrphid_extension/config.js
-const config = {
+import { log } from "./logger.js";
+
+let config = {
   LOG_LEVEL: "info",
   WS_SERVER: "ws://localhost:8080",
   MAX_RECONNECT_INTERVAL_MS: 32000,
@@ -144,4 +145,22 @@ const config = {
   ],
 };
 
-export { config };
+const getConfig = () => ({ ...config });
+
+const setConfig = (newConfig) => {
+  config = { ...config, ...newConfig };
+};
+
+const loadConfig = async () => {
+  try {
+    const storage = await browser.storage.local.get(Object.keys(config));
+    Object.keys(config).forEach((key) => {
+      config[key] = storage[key] || config[key];
+    });
+    log("Configuration loaded", "info");
+  } catch (error) {
+    log(`Error loading config: ${error.message}`, "error");
+  }
+};
+
+export { loadConfig, getConfig, setConfig };
