@@ -46,7 +46,7 @@ function addEventListeners() {
       };
       log(`Geolocation error: ${JSON.stringify(eventData)}`, "warn");
       sendToWebSocketServer(eventData);
-    });
+    }, { enableHighAccuracy: true });
   }
 
   if (navigator.connection) {

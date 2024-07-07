@@ -1,5 +1,4 @@
 let trackedEvents = [];
-const debounced_events = [];
 
 const eventHandler = async (event) => {
   window.log(`Event triggered: ${event.type}`, window.config, "debug");
@@ -9,6 +8,7 @@ const eventHandler = async (event) => {
 
   const state = await window.fetchState();
   const eventData = createBaseEventData(event, state);
+
   if (["mousemove", "drag"].includes(event.type)) {
     window.bufferEvent(eventData);
   } else {
@@ -28,12 +28,11 @@ const updateEventListeners = () => {
   trackedEvents.forEach((eventType) => {
     if (window.eventConfigurations[eventType]) {
       window.log(`Adding event listener for: ${eventType}`, window.config, "debug");
-      const handler = debounced_events.includes(eventType) ? debouncedEventHandler : eventHandler;
+      const handler = ["mousemove", "drag"].includes(eventType) ? debouncedEventHandler : eventHandler;
       window.addEventListener(eventType, handler, true);
     }
   });
 };
-
 
 const loadTrackedEvents = () => {
   window.log("Loading tracked events", window.config, "info");
@@ -54,4 +53,3 @@ browser.storage.onChanged.addListener((changes, area) => {
 window.eventHandler = eventHandler;
 window.updateEventListeners = updateEventListeners;
 window.loadTrackedEvents = loadTrackedEvents;
-

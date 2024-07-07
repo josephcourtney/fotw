@@ -1,13 +1,10 @@
-
 # Syrphid Server
 
 ## Description
-Syrphid Server is a Python-based server that receives and stores browser activity extracted and transmitted by the syrphid browser extension, including network requests, user interactions, and various events.
+Syrphid Server is a Python-based server that receives browser activity extracted and transmitted by the syrphid browser extension, including network requests, user interactions, and various events.
 
 ## Features
 - WebSocket server to handle incoming events
-- SQLModel for database interactions
-- Pydantic for data validation
 
 ## Setup
 
@@ -35,12 +32,6 @@ python -m syrphid
 ```
 
 ### Configuration
-The configuration can be set in config/config.json or through environment variables:
-```bash
-DATABASE_URL
-WEBSOCKET_HOST
-WEBSOCKET_PORT
-```
 
 ### Contributing
 
