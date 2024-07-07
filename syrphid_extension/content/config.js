@@ -11,4 +11,9 @@
             });
         });
     };
+
+    // Fetch the configuration when the content script loads
+    window.fetchConfig().then(() => {
+        window.loadTrackedEvents();
+    });
 })();

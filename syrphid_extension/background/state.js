@@ -1,24 +1,41 @@
 import { log } from "./logger.js";
 import { sendToWebSocketServer } from "./websocket.js";
 import { generateSessionId, createMessage, calculateDistance, logChanges } from "./utils.js";
-import { loadConfig } from "./config.js";
+import { loadConfig, getConfig } from "./config.js";
 
 const sessionId = generateSessionId();
 
-let environment = {
-  id: sessionId,
-  userAgent: navigator.userAgent,
-  operatingSystem: navigator.platform,
-  screenResolution: `${window.screen.width}x${window.screen.height}`,
-  extensionVersion: browser.runtime.getManifest().version,
-  geolocation: {},
-  networkStatus: null,
-  batteryStatus: null,
+let environment = null;
+
+const initializeEnvironment = () => {
+  log("Initializing environment", "info");
+  environment = {
+    id: sessionId,
+    userAgent: navigator.userAgent,
+    operatingSystem: navigator.platform,
+    screenResolution: `${window.screen.width}x${window.screen.height}`,
+    extensionVersion: browser.runtime.getManifest().version,
+    geolocation: {},
+    networkStatus: null,
+    batteryStatus: null,
+  };
 };
+
+initializeEnvironment();
 
 let state = {
   windows: {},
   tabs: {},
+};
+
+let stateCache = {
+  windows: {},
+  tabs: {},
+};
+
+const initializeState = async () => {
+  log("Initializing state", "info");
+  await loadConfig();
 };
 
 const updateState = (part, key, value) => {
@@ -30,24 +47,48 @@ const updateState = (part, key, value) => {
 
 const sendStateMessage = (part, key) => {
   if (state[part] && state[part][key] !== undefined) {
-    log(`Sending state message: ${part}-${key}`, "info");
-    sendToWebSocketServer(createMessage(`${part}-state`, sessionId, state[part][key]));
+    const delta = calculateDelta(part, key);
+    if (delta) {
+      log(`Sending state message: ${part}-${key}`, "info");
+      sendToWebSocketServer(createMessage(`${part}-state`, sessionId, delta));
+      updateCache(part, key, state[part][key]);
+    }
   }
 };
 
-const sendInitialStateMessages = () => {
-  log("Sending initial state messages", "info");
-  sendStateMessage("environment", "environment");
-  Object.keys(state.windows).forEach((windowId) => sendStateMessage("windows", windowId));
-  Object.keys(state.tabs).forEach((tabId) => sendStateMessage("tabs", tabId));
+const calculateDelta = (part, key) => {
+  const current = state[part][key];
+  const cached = stateCache[part][key] || {};
+  const delta = {};
+  let hasChanges = false;
+
+  for (const prop in current) {
+    if (current[prop] !== cached[prop]) {
+      delta[prop] = current[prop];
+      hasChanges = true;
+    }
+  }
+
+  return hasChanges ? delta : null;
 };
 
-const updateGeolocation = ({ coords }) => {
-  log(`Updating geolocation: ${JSON.stringify(coords)}`, "info");
-  const newGeolocation = { ...coords };
+const updateCache = (part, key, value) => {
+  stateCache[part][key] = { ...value };
+};
 
-  if (!environment.geolocation.latitude || calculateDistance(environment.geolocation, newGeolocation) > GEOLOCATION_THRESHOLD_METERS) {
-    log("Geolocation change detected, updating state", "info");
+const updateGeolocation = ({ coords: { latitude, longitude, accuracy, altitude, altitudeAccuracy, heading, speed } = {} }) => {
+  if (latitude === undefined || longitude === undefined) {
+    log("Geolocation could not be determined", "warn");
+    return;
+  }
+  const newGeolocation = { latitude, longitude, accuracy, altitude, altitudeAccuracy, heading, speed };
+  if (environment.geolocation.latitude === undefined || environment.geolocation.longitude === undefined) {
+    log(`Geolocation determined [${latitude}, ${longitude}], updating state`, "info");
+    environment.geolocation = newGeolocation;
+    sendStateMessage("environment", "geolocation");
+  } else if (calculateDistance(environment.geolocation, newGeolocation) > getConfig().GEOLOCATION_THRESHOLD_METERS) {
+    const locationChange = calculateDistance(environment.geolocation, newGeolocation);
+    log(`Geolocation change detected ([${environment.geolocation.latitude}, ${environment.geolocation.longitude}] to [${latitude}, ${longitude}] => ${locationChange} m), updating state`, "info");
     environment.geolocation = newGeolocation;
     sendStateMessage("environment", "geolocation");
   }
@@ -73,7 +114,9 @@ const updateWindowState = (windowId, { innerWidth, innerHeight, outerWidth, oute
 };
 
 const updateTabState = (tabId, changeInfo, tab) => {
-  if (!tab) return;
+  if (!tab) {
+    return;
+  }
   log(`Updating tab state for tab ID: ${tabId}`, "info");
   const { url, title, status } = tab;
   updateState("tabs", tabId, { url, title, status });
@@ -100,23 +143,25 @@ const handleWindowFocusChanged = (windowId) => {
   });
 };
 
-const initializeState = async () => {
-  log("Initializing state", "info");
-  state = { windows: {}, tabs: {} };
-  await loadConfig();
+const sendInitialStateMessages = () => {
+  sendStateMessage("environment", "environment");
+  Object.keys(state.windows).forEach(windowId => sendStateMessage("windows", windowId));
+  Object.keys(state.tabs).forEach(tabId => sendStateMessage("tabs", tabId));
 };
 
 export {
   environment,
   state,
+  initializeEnvironment,
   updateGeolocation,
   updateNetworkStatus,
   updateBatteryStatus,
   updateWindowState,
   updateTabState,
-  sendInitialStateMessages,
+  sendStateMessage,
   handleWindowCreated,
   handleWindowRemoved,
   handleWindowFocusChanged,
   initializeState,
+  sendInitialStateMessages
 };

@@ -1,13 +1,15 @@
 import { connectWebSocket } from "./websocket.js";
 import { addEventListeners } from "./listeners.js";
 import { handleRuntimeMessage } from "./messageHandlers.js";
-import { initializeState, handleWindowCreated, handleWindowRemoved, handleWindowFocusChanged } from "./state.js";
+import { initializeState, handleWindowCreated, handleWindowRemoved, handleWindowFocusChanged, state } from "./state.js";
 import { log } from "./logger.js";
-import { getConfig } from "./config.js";
+import { loadConfig, getConfig } from "./config.js";  // Import getConfig function
 
 const initializeExtension = async () => {
   log("Initializing state", "info");
+  await loadConfig();  // Load the configuration
   await initializeState();
+  log(`Initial state: ${JSON.stringify(state)}`, "debug");
 
   log("Connecting WebSocket", "info");
   connectWebSocket();

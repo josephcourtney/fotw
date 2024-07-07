@@ -155,7 +155,9 @@ const loadConfig = async () => {
   try {
     const storage = await browser.storage.local.get(Object.keys(config));
     Object.keys(config).forEach((key) => {
-      config[key] = storage[key] || config[key];
+      if (storage[key] !== undefined) { // Update to check for undefined
+        config[key] = storage[key];
+      }
     });
     log("Configuration loaded", "info");
   } catch (error) {

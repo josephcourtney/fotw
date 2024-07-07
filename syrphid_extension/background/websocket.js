@@ -1,16 +1,22 @@
 import { generateSessionId, log, createMessage } from "./utils.js";
-import { sendInitialStateMessages } from "./state.js";
+import { sendInitialStateMessages, initializeState, initializeEnvironment } from "./state.js";
 import { loadConfig, getConfig, setConfig } from "./config.js";
 
 let websocket;
 const sessionId = generateSessionId();
+const messageQueue = [];
 
-const connectWebSocket = () => {
-  loadConfig().then(() => {
+const connectWebSocket = async () => {
+  try {
+    initializeEnvironment(); // Ensure environment is initialized
+    await initializeState();
+    await loadConfig();
     log(`Connecting to WebSocket server at ${getConfig().WS_SERVER}`, "info");
     websocket = new WebSocket(getConfig().WS_SERVER);
     setupWebSocketEventListeners();
-  });
+  } catch (error) {
+    log(`Error initializing environment or state: ${error.message}`, "error");
+  }
 };
 
 const setupWebSocketEventListeners = () => {
@@ -24,6 +30,7 @@ const handleWebSocketOpen = () => {
   browser.runtime.sendMessage({ type: "ws-status", status: "connected" });
   resetReconnectAttempts();
   sendInitialStateMessages();
+  flushMessageQueue();
 };
 
 const handleWebSocketCloseOrError = (event) => {
@@ -55,7 +62,19 @@ const sendToWebSocketServer = (data) => {
     log(`Sending data to WebSocket server: ${JSON.stringify(data)}`, "debug");
     websocket.send(JSON.stringify(data));
   } else {
-    log("WebSocket is not open. Message not sent.", "warn");
+    log("WebSocket is not open. Queuing message.", "warn");
+    queueMessage(data);
+  }
+};
+
+const queueMessage = (data) => {
+  messageQueue.push(data);
+};
+
+const flushMessageQueue = () => {
+  while (messageQueue.length > 0 && websocket.readyState === WebSocket.OPEN) {
+    const data = messageQueue.shift();
+    sendToWebSocketServer(data);
   }
 };
 
@@ -66,6 +85,6 @@ export {
   sendToWebSocketServer,
   handleWebSocketOpen,
   handleWebSocketCloseOrError,
-  getSessionId, // Ensure this is correctly exported
+  getSessionId,
   websocket,
 };

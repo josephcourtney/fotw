@@ -52,13 +52,19 @@ const handleRuntimeMessage = async (message, sender, sendResponse) => {
 
       case "query-config":
         log("Querying config", "debug");
-        sendResponse({ type: "config", data: getConfig() });
+        sendResponse({ type: "config", config: getConfig() });
         break;
 
       default:
         log(`Sending message to WebSocket server: ${JSON.stringify(message)}`, "debug");
-        sendToWebSocketServer(createMessage(message.type, getSessionId(), message));
-        sendResponse({ result: "message-sent" });
+        const messageDetails = { windowId: null, tabId: null, ...message.details };
+        const wsMessage = createMessage(message.type, getSessionId(), messageDetails);
+        if (wsMessage) {
+          sendToWebSocketServer(wsMessage);
+          sendResponse({ result: "message-sent" });
+        } else {
+          sendResponse({ error: "Failed to create message" });
+        }
     }
   } catch (error) {
     log(`Error handling message: ${error.message}`, "error");
