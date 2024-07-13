@@ -1,90 +1,86 @@
-import { generateSessionId, log, createMessage } from "./utils.js";
-import { sendInitialStateMessages, initializeState, initializeEnvironment } from "./state.js";
-import { loadConfig, getConfig, setConfig } from "./config.js";
+import { getConfig } from './config.js';
 
-let websocket;
-const sessionId = generateSessionId();
-const messageQueue = [];
+class WebSocketManager {
+    constructor() {
+        this.websocket = null;
+        this.retryTimeout = null;
+        this.retryInterval = getConfig().RECONNECT_INTERVAL_MS;
+        this.onOpenCallbacks = [];
+        this.messageQueue = [];
+        this.isConnected = false;
+    }
 
-const connectWebSocket = async () => {
-  try {
-    initializeEnvironment(); // Ensure environment is initialized
-    await initializeState();
-    await loadConfig();
-    log(`Connecting to WebSocket server at ${getConfig().WS_SERVER}`, "info");
-    websocket = new WebSocket(getConfig().WS_SERVER);
-    setupWebSocketEventListeners();
-  } catch (error) {
-    log(`Error initializing environment or state: ${error.message}`, "error");
-  }
-};
+    setConnectionStatus = (status) => {
+        browser.storage.local.set({ connectionStatus: status });
+    }
 
-const setupWebSocketEventListeners = () => {
-  websocket.addEventListener("open", handleWebSocketOpen);
-  websocket.addEventListener("close", handleWebSocketCloseOrError);
-  websocket.addEventListener("error", handleWebSocketCloseOrError);
-};
+    connect = () => {
+        const { WS_SERVER } = getConfig();
+        console.info(`Connecting to WebSocket server at ${WS_SERVER}`);
 
-const handleWebSocketOpen = () => {
-  log("WebSocket is open now.", "info");
-  browser.runtime.sendMessage({ type: "ws-status", status: "connected" });
-  resetReconnectAttempts();
-  sendInitialStateMessages();
-  flushMessageQueue();
-};
+        this.websocket = new WebSocket(WS_SERVER);
 
-const handleWebSocketCloseOrError = (event) => {
-  const status = event.type === "close" ? "disconnected" : "error";
-  log(`WebSocket ${status}. Reconnecting...`, status === "error" ? "error" : "warn");
-  browser.runtime.sendMessage({ type: "ws-status", status });
-  scheduleReconnect();
-};
+        this.websocket.onopen = () => {
+            console.info("WebSocket connection opened");
+            clearTimeout(this.retryTimeout);
+            this.isConnected = true;
+            this.setConnectionStatus("Connected");
+            this.onOpenCallbacks.forEach(callback => callback());
 
-const resetReconnectAttempts = () => {
-  log("Resetting reconnect attempts", "info");
-  setConfig({ RECONNECT_ATTEMPTS: 0 });
-};
+            while (this.messageQueue.length > 0) {
+                const { label, message } = this.messageQueue.shift();
+                this.send({ label, message });
+            }
+        };
 
-const scheduleReconnect = () => {
-  const maxJitter = getConfig().RECONNECT_INTERVAL_MS / 2;
-  const jitter = Math.floor(Math.random() * maxJitter);
-  const reconnectInterval = Math.min(
-    getConfig().RECONNECT_INTERVAL_MS * Math.pow(getConfig().EXPONENTIAL_BACKOFF_FACTOR, getConfig().RECONNECT_ATTEMPTS) + jitter,
-    getConfig().MAX_RECONNECT_INTERVAL_MS
-  );
-  log(`Scheduling reconnect in ${reconnectInterval}ms`, "info");
-  setTimeout(connectWebSocket, reconnectInterval);
-  setConfig({ RECONNECT_ATTEMPTS: getConfig().RECONNECT_ATTEMPTS + 1 });
-};
+        this.websocket.onclose = () => {
+            console.info("WebSocket connection closed");
+            this.isConnected = false;
+            this.scheduleReconnect();
+            this.setConnectionStatus("Disconnected");
+        };
 
-const sendToWebSocketServer = (data) => {
-  if (websocket && websocket.readyState === WebSocket.OPEN) {
-    log(`Sending data to WebSocket server: ${JSON.stringify(data)}`, "debug");
-    websocket.send(JSON.stringify(data));
-  } else {
-    log("WebSocket is not open. Queuing message.", "warn");
-    queueMessage(data);
-  }
-};
+        this.websocket.onerror = (error) => {
+            console.error(`WebSocket error: ${error.message}`);
+            this.isConnected = false;
+            this.scheduleReconnect();
+            this.setConnectionStatus("Error");
+        };
 
-const queueMessage = (data) => {
-  messageQueue.push(data);
-};
+        this.websocket.onmessage = (event) => {
+            // handle incoming messages if needed
+        };
+    }
 
-const flushMessageQueue = () => {
-  while (messageQueue.length > 0 && websocket.readyState === WebSocket.OPEN) {
-    const data = messageQueue.shift();
-    sendToWebSocketServer(data);
-  }
-};
+    scheduleReconnect = () => {
+        if (!this.retryTimeout) {
+            console.info(`Attempting to reconnect in ${this.retryInterval / 1000} seconds`);
+            this.retryTimeout = setTimeout(() => {
+                this.retryInterval = Math.min(this.retryInterval * getConfig().EXPONENTIAL_BACKOFF_FACTOR, getConfig().MAX_RECONNECT_INTERVAL_MS);
+                this.connect();
+            }, this.retryInterval);
+        }
+    }
 
-const getSessionId = () => sessionId;
+    send = (message) => {
+        if (this.websocket && this.websocket.readyState === WebSocket.OPEN) {
+            this.websocket.send(JSON.stringify(message));
+        } else {
+            this.messageQueue.push(message);
+        }
+    }
 
-export {
-  connectWebSocket,
-  sendToWebSocketServer,
-  handleWebSocketOpen,
-  handleWebSocketCloseOrError,
-  getSessionId,
-  websocket,
-};
+    onOpen = (callback) => {
+        this.onOpenCallbacks.push(callback);
+    }
+}
+
+const webSocketManager = new WebSocketManager();
+
+browser.runtime.onMessage.addListener((message) => {
+    if (message.type === "reconnect") {
+        webSocketManager.connect();
+    }
+});
+
+export { webSocketManager };
