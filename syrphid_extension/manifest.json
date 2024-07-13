@@ -1,53 +1,40 @@
 {
-	"manifest_version": 2,
-	"name": "Syrphid",
-	"version": "1.0",
-	"description": "Track all browser events and transmit to a local WebSocket server.",
-	"permissions": [
-		"activeTab",
-		"webRequest",
-		"webRequestBlocking",
-		"webNavigation",
-		"tabs",
-		"storage",
-		"geolocation",
-		"<all_urls>"
-	],
-	"background": {
-		"scripts": [
-			"background/config.js",
-			"background/listeners.js",
-			"background/logger.js",
-			"background/messageHandlers.js",
-			"background/state.js",
-			"background/utils.js",
-			"background/websocket.js",
-			"background/background.js"
-		],
-		"type": "module"
-	},
-	"content_scripts": [
-		{
-			"matches": ["<all_urls>"],
-			"js": [
-				"content/utils.js",
-				"content/stateFetcher.js",
-				"content/eventHandler.js",
-				"content/buffer.js",
-				"content/config.js",
-				"content/eventConfigurations.js",
-				"content/logger.js",
-				"content/content.js"
-			]
-		}
-	],
-	"browser_action": {
-		"default_popup": "popup.html",
-		"default_icon": {
-			"16": "icons/icon16.png",
-			"48": "icons/icon48.png",
-			"128": "icons/icon128.png"
-		}
-	},
-	"options_page": "options.html"
+  "manifest_version": 2,
+  "name": "Syrphid",
+  "version": "1.1",
+  "description": "Track all browser events and transmit to a local WebSocket server.",
+  "permissions": [
+    "activeTab",
+    "webRequest",
+    "webRequestBlocking",
+    "webNavigation",
+    "tabs",
+    "storage",
+    "geolocation",
+    "<all_urls>"
+  ],
+  "background": {
+    "scripts": [
+      "background/config.js",
+      "background/utils.js",
+      "background/websocket.js",
+      "background/background.js"
+    ],
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content/content.js"]
+    }
+  ],
+  "browser_action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "options_page": "options.html"
 }
